@@ -1,0 +1,43 @@
+{
+  "name": "node-aurora",
+  "version": "0.1.0",
+  "description": "Provides an interface to the Aurora Dreamband.",
+  "main": "lib/Aurora.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "compile": "babel --plugins transform-runtime --presets es2015,stage-0 -d lib/ src/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iwinks/node-aurora.git"
+  },
+  "keywords": [
+    "iWinks",
+    "Aurora",
+    "EEG",
+    "Dreamband",
+    "ECG",
+    "BLE",
+    "BCI"
+  ],
+  "author": "Andrew Smiley <andrew@iwinks.org>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/iwinks/node-aurora/issues"
+  },
+  "homepage": "https://github.com/iwinks/node-aurora#readme",
+  "devDependencies": {
+    "babel-cli": "^6.9.0",
+    "babel-plugin-transform-runtime": "^6.9.0",
+    "babel-preset-es2015": "^6.9.0",
+    "babel-preset-stage-0": "^6.5.0"
+  },
+  "dependencies": {
+    "babel-runtime": "^6.9.0",
+    "flat": "^2.0.0",
+    "lodash": "^4.13.1",
+    "moment": "^2.13.0",
+    "serialport": "^3.1.2",
+    "usb-detection": "^1.4.0"
+  }
+}
