@@ -1,6 +1,6 @@
 import Aurora from "./Aurora";
 import AuroraCmd from "./AuroraCmd";
-import AuroraCmdTransformReadPacket from "./AuroraCmdTransformReadPacket.jsx";
+import AuroraCmdTransformReadPacket from "./AuroraCmdTransformReadPacket";
 import _ from "lodash";
 
 export default class AuroraCmdReadFile extends AuroraCmd {
