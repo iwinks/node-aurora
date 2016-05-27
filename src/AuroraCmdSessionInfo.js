@@ -49,6 +49,7 @@ export default class AuroraCmdSessionInfo extends AuroraCmdReadFile {
 
                     timeOffset = sleepEvent.date;
                     currentStage = stage;
+                    currentStageDate = sleepEvent.date;
                 }
 
                 let eventTime = sleepEvent.date - timeOffset;
@@ -77,7 +78,7 @@ export default class AuroraCmdSessionInfo extends AuroraCmdReadFile {
 
 
                     this.respSuccess.sleepData.push({
-                        date: sleepEvent.date,
+                        date: currentStageDate,
                         time: currentStageTime,
                         stage: currentStage,
                         duration: currentStageDuration
@@ -85,6 +86,7 @@ export default class AuroraCmdSessionInfo extends AuroraCmdReadFile {
 
                     this.respSuccess.sleepStages[currentStage] += currentStageDuration;
 
+                    currentStageDate = sleepEvent.date;
                     currentStageTime = eventTime;
                     currentStage = stage;
 

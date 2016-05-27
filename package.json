@@ -5,7 +5,8 @@
   "main": "lib/Aurora.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "compile": "babel --plugins transform-runtime --presets es2015,stage-0 -d lib/ src/"
+    "compile": "babel --plugins transform-runtime --presets es2015,stage-0 -d lib/ src/",
+    "prepublish": "npm run compile"
   },
   "repository": {
     "type": "git",
