@@ -11,7 +11,7 @@ export default class AuroraCmdSessionInfo extends AuroraCmdReadFile {
         streams: {},
         sleepAwakenings: 0,
         sleepStages: {0: 0, 1: 0, 2: 0, 3: 0, 4: 0},
-        sleepOnset: 0,
+        sleepOnset: false,
         sleepData: []
     };
 
@@ -56,7 +56,7 @@ export default class AuroraCmdSessionInfo extends AuroraCmdReadFile {
 
                 if (!sleeping && stage > 1) {
                     sleeping = true;
-                    if (!this.respSuccess.sleepOnset){
+                    if (this.respSuccess.sleepOnset === false){
                         this.respSuccess.sleepOnset = eventTime;
                     }
                 }
@@ -65,7 +65,6 @@ export default class AuroraCmdSessionInfo extends AuroraCmdReadFile {
                     sleeping = false;
                     this.respSuccess.sleepAwakenings++;
                 }
-
 
 
                 //if this is the last event, we need to
@@ -97,11 +96,18 @@ export default class AuroraCmdSessionInfo extends AuroraCmdReadFile {
 
             });
 
+            //is there any time left over?
             if (totalSleepDuration && this.respSuccess.duration > totalSleepDuration){
-                //tack on remainder of sleep to last stage
+
+                //tack on remainder of sleep to current stage
                 this.respSuccess.sleepStages[currentStage] += (this.respSuccess.duration - totalSleepDuration);
             }
 
+            //this means we never fell asleep
+            if (this.respSuccess.sleepOnset === false){
+
+                this.respSuccess.sleepOnset = this.respSuccess.duration;
+            }
 
         }
 
