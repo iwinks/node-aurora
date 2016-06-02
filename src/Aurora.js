@@ -174,9 +174,9 @@ class Aurora extends EventEmitter {
 
             if (this.options.serialPort == 'auto') {
 
-                Com.list( (err, ports) => {
+                Com.list( (error, ports) => {
 
-                    if (err) {
+                    if (error) {
                         return reject(error);
                     }
 
