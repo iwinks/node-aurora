@@ -1,4 +1,4 @@
-import Com from "serialport";
+import SerialPort from "serialport";
 import usbDetect from 'usb-detection';
 import AuroraCmd from './AuroraCmd';
 import AuroraCmdReadFile from './AuroraCmdReadFile';
@@ -28,7 +28,8 @@ class Aurora extends EventEmitter {
 
             baudrate: 38400,
             bufferSize: 256,
-            flowControl: false
+            flowControl: false,
+            autoOpen: false
         },
         enableLogging: false,
         logFilePath: 'aurora-serial.log',
@@ -99,7 +100,7 @@ class Aurora extends EventEmitter {
                 let serialPort = serialPorts.pop();
                 console.log('try connect', serialPort);
 
-                this._serial = new Com.SerialPort(serialPort, this.options.serialOptions, false);
+                this._serial = new SerialPort(serialPort, this.options.serialOptions);
 
                 this._serial.once('close', () => {
                     console.log('serialDisconnect', 'expected');
@@ -174,9 +175,10 @@ class Aurora extends EventEmitter {
 
             if (this.options.serialPort == 'auto') {
 
-                Com.list( (error, ports) => {
+                SerialPort.list( (error, ports) => {
 
                     if (error) {
+                        console.log('serial error', error);
                         return reject(error);
                     }
 
