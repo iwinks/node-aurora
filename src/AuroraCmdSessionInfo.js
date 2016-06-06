@@ -37,6 +37,7 @@ export default class AuroraCmdSessionInfo extends AuroraCmdReadFile {
             let timeOffset = 0;
             let currentStageTime = 0;
             let currentStage = 0;
+            let currentStageDate = 0;
 
             let totalSleepDuration = 0;
             let numEventsToProcess = _.keys(this.respSuccess.events[15]).length;

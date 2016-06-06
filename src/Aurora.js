@@ -63,6 +63,15 @@ class Aurora extends EventEmitter {
 
     setOptions(options) {
 
+        //if log status is changing, we need to close the stream if it exists
+        if (options.enableLogging != this.options.enableLogging ||
+            options.logFilePath != this.options.logFilePath){
+
+            if (options.serialLogStream) this.serialLogStream.end();
+
+            this.serialLogStream = this.options.enableLogging ? fs.createWriteStream(this.options.logFilePath) : null;
+        }
+
         this.options = _.defaultsDeep(this.options, options);
     }
 
@@ -91,7 +100,8 @@ class Aurora extends EventEmitter {
             this.connectTimer = setTimeout(() => {
 
                 this.usbConnecting = false;
-                reject('Timeout while trying to usbConnect to Aurora.');
+                
+                reject('Timeout while trying to connect to Aurora.');
 
             }, this.options.connectTimeout);
 
@@ -204,7 +214,7 @@ class Aurora extends EventEmitter {
                     if (!serialPorts.length) {
                         this.usbConnecting = false;
 
-                        return reject('No Aurora devices found usbConnected to computer.');
+                        return reject('No Aurora devices found connected to computer.');
                     }
 
                     tryConnect(serialPorts);
