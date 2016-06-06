@@ -69,7 +69,7 @@ class Aurora extends EventEmitter {
 
             if (options.serialLogStream) this.serialLogStream.end();
 
-            this.serialLogStream = this.options.enableLogging ? fs.createWriteStream(this.options.logFilePath) : null;
+            this.serialLogStream = this.options.enableLogging ? fs.createWriteStream(options.logFilePath || this.options.logFilePath) : null;
         }
 
         this.options = _.defaultsDeep(this.options, options);
