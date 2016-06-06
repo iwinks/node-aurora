@@ -183,6 +183,8 @@ export default class AuroraCmd {
 
     _commandResponse(){
 
+        clearTimeout(this.respTimer);
+
         this.respSuccessStreamFront.removeAllListeners();
         this.respErrorStreamFront.removeAllListeners();
         this.respSuccessStreamBack.removeAllListeners();
