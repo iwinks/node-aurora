@@ -1,4 +1,5 @@
 import Stream from "stream";
+import _ from 'lodash';
 
 export default class AuroraCmdTransformLines extends Stream.Transform {
 
@@ -22,7 +23,7 @@ export default class AuroraCmdTransformLines extends Stream.Transform {
 
         this._leftoverData = lines.pop();
 
-        lines.map(line => {
+        lines = lines.map(line => {
             return line.trim();
         });
 
