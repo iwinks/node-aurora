@@ -266,6 +266,15 @@ class Aurora extends EventEmitter {
             this._processQueue();
 
             return resp;
+            
+        }).catch (error => {
+
+            console.log(error)
+
+            console.timeEnd('command completed');
+            this._processQueue();
+
+            return error;
         });
 
     }
