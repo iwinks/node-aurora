@@ -11,7 +11,7 @@ export default class AuroraCmdSessionInfo extends AuroraCmdReadFile {
         streams: {},
         sleepAwakenings: 0,
         sleepStages: {0: 0, 1: 0, 2: 0, 3: 0, 4: 0},
-        sleepOnset: 0,
+        sleepOnset: false,
         sleepData: []
     };
 
