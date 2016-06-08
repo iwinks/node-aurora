@@ -11,13 +11,13 @@ export default class AuroraCmdSessionInfo extends AuroraCmdReadFile {
         streams: {},
         sleepAwakenings: 0,
         sleepStages: {0: 0, 1: 0, 2: 0, 3: 0, 4: 0},
-        sleepOnset: false,
+        sleepOnset: 0,
         sleepData: []
     };
 
     static defaultOptions = {
         respTypeSuccess: AuroraCmd.RespTypes.OBJECT
-    }
+    };
 
     constructor(srcPath, options) {
 
@@ -104,12 +104,12 @@ export default class AuroraCmdSessionInfo extends AuroraCmdReadFile {
                 this.respSuccess.sleepStages[currentStage] += (this.respSuccess.duration - totalSleepDuration);
             }
 
-            //this means we never fell asleep
-            if (this.respSuccess.sleepOnset === false){
+        }
 
-                this.respSuccess.sleepOnset = this.respSuccess.duration;
-            }
+        //this means we never fell asleep
+        if (this.respSuccess.sleepOnset === false){
 
+            this.respSuccess.sleepOnset = this.respSuccess.duration;
         }
 
         super._commandResponse();
