@@ -11,7 +11,7 @@ export default class AuroraCmdTransformBinary extends Stream.Transform {
         this.parser = new Parser();
 
         this.parser.array('values', {
-            type: 'int16',
+            type: 'int16be',
             readUntil: 'eof',
             formatter: function(values) {
 
