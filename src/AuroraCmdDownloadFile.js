@@ -1,4 +1,6 @@
 import AuroraCmdReadFile from "./AuroraCmdReadFile";
+import AuroraCmdTransformBinary from "./AuroraCmdTransformBinary";
+
 import _ from "lodash";
 import FileSystem from "fs";
 import mkdirp from "mkdirp";
