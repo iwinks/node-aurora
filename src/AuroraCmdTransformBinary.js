@@ -17,7 +17,7 @@ export default class AuroraCmdTransformBinary extends Stream.Transform {
 
                 return values.join(',');
             }
-        };
+        });
     }
 
     _transform(respChunk, encoding, done) {
