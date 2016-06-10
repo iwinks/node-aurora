@@ -26,13 +26,17 @@ export default class AuroraCmdTransformReadPacket extends Stream.Transform {
             .uint8('syncCheck', {assert: 0xAA})
             .uint8('payloadLength')
             .buffer('payload', {length: 'payloadLength'})
-            .uint8('checksum');
+            .uint8('checksum', {
+                assert: (checksum) => {
 
-        /*
-         if ((~(this.checksum % 256) & 0x000000FF) == b) {
+                    let payloadSum = 0;
+                    for (let val of this.payload.values()){
+                        payloadSum += val;
+                    }
 
-         }
-         */
+                    return (~(payloadSum % 256) & 0x000000FF) == checksum;
+                }
+            });
 
         this.numRetries = 0;
 
@@ -52,6 +56,8 @@ export default class AuroraCmdTransformReadPacket extends Stream.Transform {
             respChunk = Buffer.concat([this.leftoverBuffer, respChunk], this.leftoverBuffer.length + respChunk.length);
             this.leftoverBuffer = null;
         }
+
+        console.log('chunk length', respChunk.length);
 
         if (respChunk.length < this.options.packetSize) {
 

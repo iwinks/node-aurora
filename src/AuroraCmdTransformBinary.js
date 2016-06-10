@@ -28,6 +28,8 @@ export default class AuroraCmdTransformBinary extends Stream.Transform {
             this.options.parseTypeLength = this._getParseTypeLengthFromDataType(this.options.dataType);
         }
 
+        console.log('parsing types', this.options.parseType, this.options.parseTypeLength);
+
         this.parser = new Parser();
 
         this.leftoverBuffer = null;
