@@ -37,13 +37,15 @@ export default class AuroraCmdTransformBinary extends Stream.Transform {
             type: this.options.parseType,
             readUntil: 'eof',
             formatter: function(values) {
-
+                console.log('parse', values);
                 return values.join(',');
             }
         });
     }
 
     _transform(respChunk, encoding, done) {
+
+        console.log('chunk', respChunk);
 
         if (this.leftoverBytes.length){
 
@@ -60,6 +62,8 @@ export default class AuroraCmdTransformBinary extends Stream.Transform {
         this.hasData = true;
 
         const numBytesLeftover = respChunk.length % this.options.parseTypeLength;
+
+        console.log('bytes leftover', numBytesLeftover);
 
         if (numBytesLeftover) {
 

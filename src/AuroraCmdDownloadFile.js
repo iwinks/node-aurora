@@ -43,7 +43,7 @@ export default class AuroraCmdDownloadFile extends AuroraCmdReadFile {
                 return;
             }
 
-            let fileStream = FileSystem.createWriteStream(this.destPath, {highWaterMark: this.options.writeStreamOptions});
+            const fileStream = FileSystem.createWriteStream(this.destPath, {highWaterMark: this.options.writeStreamOptions});
 
             if (this.options.binaryDataType !== false){
 
