@@ -60,20 +60,28 @@ export default class AuroraCmdTransformBinary extends Stream.Transform {
             return;
         }
 
-        this.hasData = true;
+        
 
         const numBytesLeftover = respChunk.length % this.options.parseTypeLength;
 
         console.log('bytes leftover', numBytesLeftover);
 
+        let parsedChunk;
+
         if (numBytesLeftover) {
 
-            this.push((this.hasData ? ',' : '') + this.parser.parse(respChunk.slice(0, -numBytesLeftover)));
+            parsedChunk = this.parser.parse(respChunk.slice(0, -numBytesLeftover));
+
             this.leftoverBuffer = respChunk.slice(-numBytesLeftover);
+
+        } else {
+
+            parsedChunk = this.parser.parse(respChunk);
         }
-        else {
-            this.push((this.hasData ? ',' : '') + this.parser.parse(respChunk));
-        }
+
+        this.push((this.hasData ? ',' : '') + parsedChunk.values);
+
+        this.hasData = true;
 
         done();
     }
