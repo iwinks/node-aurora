@@ -30,7 +30,7 @@ export default class AuroraCmdDownloadFile extends AuroraCmdReadFile {
     
     _setupRespSuccess() {
 
-        
+        console.log('setup resp success, download file', this.options);
     }
 
     exec() {
@@ -42,7 +42,7 @@ export default class AuroraCmdDownloadFile extends AuroraCmdReadFile {
                 this.triggerError(-1, error);
                 return;
             }
-            
+
             super._setupRespSuccess();
 
             if (this.options.binaryDataType !== false){

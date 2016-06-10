@@ -53,6 +53,8 @@ export default class AuroraCmd {
 
     _setupRespSuccess() {
 
+        console.log('setup resp success, cmd', this.options);
+
         switch (this.options.respTypeSuccess){
             
             case AuroraCmd.RespTypes.ARRAY:
