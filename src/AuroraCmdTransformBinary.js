@@ -10,8 +10,10 @@ export default class AuroraCmdTransformBinary extends Stream.Transform {
 
         this.parser = new Parser();
 
+        this.leftoverBytes = [];
+
         this.parser.array('values', {
-            type: 'int16be',
+            type: 'int16le',
             readUntil: 'eof',
             formatter: function(values) {
 
@@ -22,7 +24,37 @@ export default class AuroraCmdTransformBinary extends Stream.Transform {
 
     _transform(respChunk, encoding, done) {
 
-        this.push(this.parser.parse(respChunk));
+        if (this.leftoverBytes.length){
+
+            respChunk = Buffer.from(this.leftoverBytes).concat(respChunk);
+            this.leftoverBytes = [];
+        }
+
+        if (respChunk.length < 2) {
+
+            this.leftoverBytes = respChunk.values();
+            done();
+        }
+
+        const numBytesLeftover = respChunk.length % 2;
+
+        if (numBytesLeftover) {
+
+            this.push(this.parser.parse(respChunk.slice(0, -numBytesLeftover)));
+            this.leftoverBytes = respChunk.slice(-numBytesLeftover).values();
+        }
+        else {
+            this.push(this.parser.parse(respChunk));
+        }
+
+        done();
+    }
+
+    _flush(done) {
+
+        if (this.leftoverBytes.length) {
+            console.log("Unparsed binary bytes: ", this.leftoverBytes);
+        }
 
         done();
     }
