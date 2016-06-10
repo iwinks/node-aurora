@@ -49,6 +49,13 @@ export default class AuroraCmdTransformBinary extends Stream.Transform {
 
         console.log('chunk', respChunk);
 
+        if (!respChunk.length) {
+
+            console.log('no data in binary chunk');
+            done();
+            return;
+        }
+
         if (Buffer.isBuffer(this.leftoverBuffer)){
 
             respChunk = Buffer.concat([this.leftoverBuffer, respChunk], this.leftoverBuffer.length + respChunk.length);

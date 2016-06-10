@@ -51,6 +51,13 @@ export default class AuroraCmdTransformReadPacket extends Stream.Transform {
 
         console.log('chunk', respChunk.toString());
 
+        if (!respChunk.length) {
+
+            console.log('no data in packet');
+            done();
+            return;
+        }
+
         if (Buffer.isBuffer(this.leftoverBuffer)){
 
             respChunk = Buffer.concat([this.leftoverBuffer, respChunk], this.leftoverBuffer.length + respChunk.length);
