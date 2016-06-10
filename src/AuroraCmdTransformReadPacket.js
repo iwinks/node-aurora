@@ -49,7 +49,7 @@ export default class AuroraCmdTransformReadPacket extends Stream.Transform {
 
         if (this.leftoverBuffer){
 
-            respChunk = this.leftoverBuffer.concat(respChunk);
+            respChunk = Buffer.concat(this.leftoverBuffer, respChunk);
             this.leftoverBuffer = null;
         }
 
