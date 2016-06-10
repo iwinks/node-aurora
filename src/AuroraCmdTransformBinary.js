@@ -12,7 +12,7 @@ export default class AuroraCmdTransformBinary extends Stream.Transform {
     };
 
 
-    constructor(dataType) {
+    constructor(options) {
 
         super();
 
@@ -20,12 +20,12 @@ export default class AuroraCmdTransformBinary extends Stream.Transform {
 
         if (typeof this.options.parseType == 'undefined') {
 
-            this.options.parseType = this._getParseTypeFromDataType(dataType);
+            this.options.parseType = this._getParseTypeFromDataType(this.options.dataType);
         }
 
         if (typeof this.options.parseTypeLength == 'undefined') {
 
-            this.options.parseTypeLength = this._getParseTypeLengthFromDataType(dataType);
+            this.options.parseTypeLength = this._getParseTypeLengthFromDataType(this.options.dataType);
         }
 
         this.parser = new Parser();
