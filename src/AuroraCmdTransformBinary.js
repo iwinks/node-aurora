@@ -114,7 +114,7 @@ export default class AuroraCmdTransformBinary extends Stream.Transform {
         }
     }
 
-    _getParseTypeFromDataType(dataType) {
+    _getParseTypeLengthFromDataType(dataType) {
 
         switch(dataType){
 
