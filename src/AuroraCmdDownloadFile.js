@@ -26,11 +26,11 @@ export default class AuroraCmdDownloadFile extends AuroraCmdReadFile {
 
     //since we are setting the stream in the overridden
     //exec function, we need to make sure we don't overwrite
-    //the stream here so just initialize the response
+    //the stream here so just create a dummy implementation
     
     _setupRespSuccess() {
 
-        this.respSuccess = "";
+        
     }
 
     exec() {
@@ -42,19 +42,15 @@ export default class AuroraCmdDownloadFile extends AuroraCmdReadFile {
                 this.triggerError(-1, error);
                 return;
             }
-
-            const fileStream = FileSystem.createWriteStream(this.destPath, {highWaterMark: this.options.writeStreamOptions});
+            
+            super._setupRespSuccess();
 
             if (this.options.binaryDataType !== false){
 
-                this.respSuccessStreamFront = new AuroraCmdTransformBinary({dataType: this.options.binaryDataType});
-                this.respSuccessStreamBack = this.respSuccessStreamFront.pipe(fileStream);
+                this.respSuccessStreamBack = this.respSuccessStreamBack.pipe(new AuroraCmdTransformBinary({dataType: this.options.binaryDataType}));
             }
-            else {
 
-                this.respSuccessStreamFront = fileStream;
-                this.respSuccessStreamBack = fileStream;
-            }
+            this.respSuccessStreamBack = this.respSuccessStreamBack.pipe(FileSystem.createWriteStream(this.destPath, {highWaterMark: this.options.writeStreamOptions}));
 
             super.exec();
         });

@@ -49,9 +49,7 @@ export default class AuroraCmdReadFile extends AuroraCmd {
 
         if (this.options.packetMode && this.options.packetSize) {
 
-            this.respSuccessStreamBack = this.respSuccessStreamFront;
-            this.respSuccessStreamFront = new AuroraCmdTransformReadPacket(this, {packetSize: this.options.packetSize});
-            this.respSuccessStreamFront.pipe(this.respSuccessStreamBack);
+            this.respSuccessStreamFront = new AuroraCmdTransformReadPacket(this, {packetSize: this.options.packetSize}).pipe(this.respSuccessStreamFront);
         }
 
     }
