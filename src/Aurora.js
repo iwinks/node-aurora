@@ -27,7 +27,7 @@ class Aurora extends EventEmitter {
         serialOptions: {
 
             baudrate: 38400,
-            bufferSize: 256,
+            bufferSize: 127,
             flowControl: false,
             autoOpen: false
         },
