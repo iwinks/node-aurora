@@ -49,7 +49,7 @@ export default class AuroraCmdTransformBinary extends Stream.Transform {
 
         if (this.leftoverBuffer){
 
-            respChunk = Buffer.concat(this.leftoverBuffer, respChunk);
+            respChunk = Buffer.concat([this.leftoverBuffer, respChunk], this.leftoverBuffer.length + respChunk.length);
             this.leftoverBuffer = null;
         }
 
