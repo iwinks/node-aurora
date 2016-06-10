@@ -78,6 +78,9 @@ export default class AuroraCmd {
                 this.respSuccessStreamBack = new Stream.PassThrough({decodeStrings: false });
 
         }
+
+        //forward front streams to back streams
+        this.respSuccessStreamFront.pipe(this.respSuccessStreamBack);
     }
 
     _setupRespError() {
@@ -102,6 +105,9 @@ export default class AuroraCmd {
                 this.respErrorStreamFront = new Stream.PassThrough({decodeStrings: false});
                 this.respErrorStreamBack = new Stream.PassThrough({decodeStrings: false });
         }
+
+        //forward front streams to back streams
+        this.respErrorStreamFront.pipe(this.respErrorStreamBack);
     }
 
     //called when a command is ready to be processed
@@ -122,11 +128,7 @@ export default class AuroraCmd {
         this._setupRespError();
 
         this.error = false;
-
-        //forward front streams to back streams
-        this.respSuccessStreamFront.pipe(this.respSuccessStreamBack);
-        this.respErrorStreamFront.pipe(this.respErrorStreamBack);
-
+        
         this.respSuccessStreamBack.on('data', this._onRespSuccessData.bind(this));
         this.respErrorStreamBack.on('data', this._onRespErrorData.bind(this));
 

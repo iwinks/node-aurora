@@ -1,6 +1,7 @@
 import Aurora from "./Aurora";
 import AuroraCmd from "./AuroraCmd";
 import AuroraCmdTransformReadPacket from "./AuroraCmdTransformReadPacket";
+import AuroraCmdTransformBinary from "./AuroraCmdTransformBinary";
 import _ from "lodash";
 
 export default class AuroraCmdReadFile extends AuroraCmd {
@@ -10,7 +11,8 @@ export default class AuroraCmdReadFile extends AuroraCmd {
         respTimeout: 180000,
         respTypeSuccess: AuroraCmd.RespTypes.STRING,
         packetMode: true,
-        packetSize: 127
+        packetSize: 127,
+        binaryDataType: false
     };
     
     constructor(srcPath, options) {
@@ -56,6 +58,11 @@ export default class AuroraCmdReadFile extends AuroraCmd {
             packetTransform.pipe(this.respSuccessStreamFront);
 
             this.respSuccessStreamFront = packetTransform;
+        }
+    
+        if (this.options.binaryDataType !== false){
+        
+            this.respSuccessStreamBack = this.respSuccessStreamBack.pipe(new AuroraCmdTransformBinary({dataType: this.options.binaryDataType}));
         }
 
     }

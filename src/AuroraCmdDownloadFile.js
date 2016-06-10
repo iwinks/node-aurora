@@ -1,5 +1,4 @@
 import AuroraCmdReadFile from "./AuroraCmdReadFile";
-import AuroraCmdTransformBinary from "./AuroraCmdTransformBinary";
 
 import _ from "lodash";
 import FileSystem from "fs";
@@ -11,9 +10,7 @@ export default class AuroraCmdDownloadFile extends AuroraCmdReadFile {
 
         writeStreamOptions: {
             highWaterMark: 127
-        },
-
-        binaryDataType: false
+        }
     };
 
     constructor(srcPath, destPath, options) {
@@ -44,11 +41,6 @@ export default class AuroraCmdDownloadFile extends AuroraCmdReadFile {
             }
 
             super._setupRespSuccess();
-
-            if (this.options.binaryDataType !== false){
-
-                this.respSuccessStreamBack = this.respSuccessStreamBack.pipe(new AuroraCmdTransformBinary({dataType: this.options.binaryDataType}));
-            }
 
             this.respSuccessStreamBack = this.respSuccessStreamBack.pipe(FileSystem.createWriteStream(this.destPath, {highWaterMark: this.options.writeStreamOptions}));
 
