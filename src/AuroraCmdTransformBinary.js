@@ -30,7 +30,7 @@ export default class AuroraCmdTransformBinary extends Stream.Transform {
 
         this.parser = new Parser();
 
-        this.leftoverBytes = [];
+        this.leftoverBuffer = null
         this.hasData = false;
 
         this.parser.array('values', {
@@ -47,15 +47,15 @@ export default class AuroraCmdTransformBinary extends Stream.Transform {
 
         console.log('chunk', respChunk);
 
-        if (this.leftoverBytes.length){
+        if (this.leftoverBuffer){
 
-            respChunk = Buffer.from(this.leftoverBytes).concat(respChunk);
-            this.leftoverBytes = [];
+            respChunk = this.leftoverBuffer.concat(respChunk);
+            this.leftoverBuffer = null;
         }
 
         if (respChunk.length < this.options.parseTypeLength) {
 
-            this.leftoverBytes = respChunk.values();
+            this.leftoverBuffer = respChunk;
             done();
             return;
         }
@@ -80,8 +80,8 @@ export default class AuroraCmdTransformBinary extends Stream.Transform {
 
     _flush(done) {
 
-        if (this.leftoverBytes.length) {
-            console.log("Unparsed binary bytes: ", this.leftoverBytes);
+        if (this.leftoverBuffer) {
+            console.log("Unparsed binary buffer: ", this.leftoverBuffer);
         }
 
         this.hasData = false;

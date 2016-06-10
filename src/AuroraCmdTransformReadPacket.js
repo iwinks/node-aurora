@@ -19,7 +19,7 @@ export default class AuroraCmdTransformReadPacket extends Stream.Transform {
 
         this.cmd = cmd;
 
-        this.leftoverBytes = [];
+        this.leftoverBuffer = null;
 
         this.parser = new Parser()
             .uint8('sync', {assert: 0xAA})
@@ -47,17 +47,15 @@ export default class AuroraCmdTransformReadPacket extends Stream.Transform {
 
         console.log('chunk', respChunk.toString());
 
-        if (this.leftoverBytes.length){
+        if (this.leftoverBuffer){
 
-            console.log('leftover bytes', this.leftoverBytes);
-
-            respChunk = Buffer.from(this.leftoverBytes).concat(respChunk);
-            this.leftoverBytes = [];
+            respChunk = this.leftoverBuffer.concat(respChunk);
+            this.leftoverBuffer = null;
         }
 
         if (respChunk.length < this.options.packetSize) {
 
-            this.leftoverBytes = respChunk.values();
+            this.leftoverBytes = respChunk;
 
             console.log('incomplete packet', respChunk);
 
