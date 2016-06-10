@@ -13,7 +13,10 @@ export default class AuroraCmdTransformReadPacket extends Stream.Transform {
 
     constructor(cmd, options) {
 
-        super();
+        super({
+            highWaterMark: options.packetSize || AuroraCmdTransformReadPacket.defaultOptions.packetSize,
+            encoding: null
+        });
 
         this.options = _.defaultsDeep(options, AuroraCmdTransformReadPacket.defaultOptions);
 

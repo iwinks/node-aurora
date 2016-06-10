@@ -13,7 +13,7 @@ export default class AuroraCmdTransformObject extends Stream.Transform {
     
     constructor(options) {
         
-        super({objectMode: true});
+        super({objectMode: true, encoding: null});
         
         this.options = _.defaultsDeep(options, AuroraCmdTransformObject.defaultOptions);
         

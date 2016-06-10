@@ -60,13 +60,13 @@ export default class AuroraCmd {
             case AuroraCmd.RespTypes.ARRAY:
 
                 this.respSuccess = [];
-                this.respSuccessStreamFront = new Stream.PassThrough({decodeStrings: true});
+                this.respSuccessStreamFront = new Stream.PassThrough({decodeStrings: true, encoding: null});
                 this.respSuccessStreamBack = new AuroraCmdTransformLines(this.options.respTypeSuccessOptions);
                 break;
             
             case AuroraCmd.RespTypes.OBJECT:
                 this.respSuccess = {};
-                this.respSuccessStreamFront = new Stream.PassThrough({decodeStrings: true});
+                this.respSuccessStreamFront = new Stream.PassThrough({decodeStrings: true, encoding: null});
                 this.respSuccessStreamBack = new AuroraCmdTransformObject(this.options.respTypeSuccessOptions);
                 
                 break;
@@ -74,8 +74,8 @@ export default class AuroraCmd {
             case AuroraCmd.RespTypes.STRING:
             default:
                 this.respSuccess = "";
-                this.respSuccessStreamFront = new Stream.PassThrough({decodeStrings: true});
-                this.respSuccessStreamBack = new Stream.PassThrough({decodeStrings: true });
+                this.respSuccessStreamFront = new Stream.PassThrough({decodeStrings: true, encoding: null});
+                this.respSuccessStreamBack = new Stream.PassThrough({decodeStrings: true, encoding: null });
 
         }
 
@@ -89,21 +89,21 @@ export default class AuroraCmd {
         
             case AuroraCmd.RespTypes.ARRAY:
                 this.respError = [];
-                this.respErrorStreamFront = new Stream.PassThrough({decodeStrings: true});
+                this.respErrorStreamFront = new Stream.PassThrough({decodeStrings: true, encoding: null});
                 this.respErrorStreamBack = new AuroraCmdTransformLines(this.options.respTypeErrorOptions);
                 break;
         
             case AuroraCmd.RespTypes.OBJECT:
                 this.respError = {};
-                this.respErrorStreamFront = new Stream.PassThrough({decodeStrings: true});
+                this.respErrorStreamFront = new Stream.PassThrough({decodeStrings: true, encoding: null});
                 this.respErrorStreamBack = new AuroraCmdTransformObject(this.options.respTypeErrorOptions);
                 break;
 
             case AuroraCmd.RespTypes.STRING:
             default:
                 this.respError = "";
-                this.respErrorStreamFront = new Stream.PassThrough({decodeStrings: true});
-                this.respErrorStreamBack = new Stream.PassThrough({decodeStrings: true });
+                this.respErrorStreamFront = new Stream.PassThrough({decodeStrings: true, encoding: null});
+                this.respErrorStreamBack = new Stream.PassThrough({decodeStrings: true, encoding: null });
         }
 
         //forward front streams to back streams

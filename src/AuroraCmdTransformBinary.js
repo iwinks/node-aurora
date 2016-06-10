@@ -14,7 +14,7 @@ export default class AuroraCmdTransformBinary extends Stream.Transform {
 
     constructor(options) {
 
-        super();
+        super({encoding: null});
 
         this.options = _.defaultsDeep(options, AuroraCmdTransformBinary.defaultOptions);
 

@@ -5,7 +5,7 @@ export default class AuroraCmdTransformLines extends Stream.Transform {
 
     constructor() {
 
-        super({objectMode: true});
+        super({objectMode: true, encoding: null});
 
         this._leftoverData = '';
     }
