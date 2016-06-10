@@ -45,6 +45,8 @@ export default class AuroraCmdTransformReadPacket extends Stream.Transform {
 
     _transform(respChunk, encoding, done) {
 
+        console.log('chunk', respChunk.toString());
+
         if (this.leftoverBytes.length){
 
             respChunk = Buffer.from(this.leftoverBytes).concat(respChunk);
@@ -55,6 +57,8 @@ export default class AuroraCmdTransformReadPacket extends Stream.Transform {
 
             this.leftoverBytes = respChunk.values();
 
+            console.log('incomplete packet', respChunk);
+
             done();
             return;
         }
@@ -64,6 +68,8 @@ export default class AuroraCmdTransformReadPacket extends Stream.Transform {
             try {
 
                 const packet = this.parser.parse(respChunk);
+
+                console.log(packet);
 
                 this.push(packet.payload);
 
@@ -84,6 +90,8 @@ export default class AuroraCmdTransformReadPacket extends Stream.Transform {
 
     _requestResend(e) {
 
+        console.log('Requesting resend', e);
+
         if (this.numRetries >= 3){
 
             this.cmd.triggerError(-1, "Failed reading file.");
@@ -98,6 +106,8 @@ export default class AuroraCmdTransformReadPacket extends Stream.Transform {
     }
 
     _requestNextPacket() {
+
+        console.log('requesting next packet');
 
         this.numRetries = 0;
 
