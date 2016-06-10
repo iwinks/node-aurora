@@ -49,6 +49,8 @@ export default class AuroraCmdTransformReadPacket extends Stream.Transform {
 
         if (this.leftoverBytes.length){
 
+            console.log('leftover bytes', this.leftoverBytes);
+
             respChunk = Buffer.from(this.leftoverBytes).concat(respChunk);
             this.leftoverBytes = [];
         }
