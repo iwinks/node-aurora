@@ -81,6 +81,8 @@ export default class AuroraCmdTransformBinary extends Stream.Transform {
             parsedChunk = this.parser.parse(respChunk);
         }
 
+        console.log(parsedChunk);
+
         this.push((this.hasData ? ',' : '') + parsedChunk.values);
 
         this.hasData = true;
