@@ -127,8 +127,8 @@ export default class AuroraCmd {
         this.respSuccessStreamFront.pipe(this.respSuccessStreamBack);
         this.respErrorStreamFront.pipe(this.respErrorStreamBack);
 
-        this.respSuccessStreamFront.on('data', this._onRespSuccessData.bind(this));
-        this.respErrorStreamFront.on('data', this._onRespErrorData.bind(this));
+        this.respSuccessStreamBack.on('data', this._onRespSuccessData.bind(this));
+        this.respErrorStreamBack.on('data', this._onRespErrorData.bind(this));
 
         this.respSuccessStreamBack.on('finish', this._commandResponse.bind(this));
         this.respErrorStreamBack.on('finish', this._commandResponse.bind(this));
