@@ -27,7 +27,7 @@ export default class AuroraCmdTransformReadPacket extends Stream.Transform {
             .uint8('payloadLength')
             .buffer('payload', {length: 'payloadLength'})
             .uint8('checksum', {
-                assert: (checksum) => {
+                assert: function(checksum){
 
                     let payloadSum = 0;
                     for (let val of this.payload.values()){
