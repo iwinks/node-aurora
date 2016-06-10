@@ -30,7 +30,7 @@ export default class AuroraCmdTransformBinary extends Stream.Transform {
 
         this.parser = new Parser();
 
-        this.leftoverBuffer = null
+        this.leftoverBuffer = null;
         this.hasData = false;
 
         this.parser.array('values', {
@@ -47,7 +47,7 @@ export default class AuroraCmdTransformBinary extends Stream.Transform {
 
         console.log('chunk', respChunk);
 
-        if (this.leftoverBuffer){
+        if (Buffer.isBuffer(this.leftoverBuffer)){
 
             respChunk = Buffer.concat([this.leftoverBuffer, respChunk], this.leftoverBuffer.length + respChunk.length);
             this.leftoverBuffer = null;
