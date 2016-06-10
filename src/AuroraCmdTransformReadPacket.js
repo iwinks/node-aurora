@@ -30,8 +30,8 @@ export default class AuroraCmdTransformReadPacket extends Stream.Transform {
                 assert: function(checksum){
 
                     let payloadSum = 0;
-                    for (let val of this.payload.values()){
-                        payloadSum += val;
+                    for (let i=0; i < this.payload.length; i++){
+                        payloadSum += this.payload[i];
                     }
 
                     return (~(payloadSum % 256) & 0x000000FF) == checksum;
