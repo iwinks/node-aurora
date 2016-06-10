@@ -57,6 +57,7 @@ export default class AuroraCmdTransformBinary extends Stream.Transform {
 
             this.leftoverBytes = respChunk.values();
             done();
+            return;
         }
 
         this.hasData = true;

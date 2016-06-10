@@ -10,7 +10,7 @@ export default class AuroraCmdDownloadFile extends AuroraCmdReadFile {
     static defaultOptions = {
 
         writeStreamOptions: {
-            highWaterMark: 1024
+            highWaterMark: 128
         },
 
         binaryDataType: false
