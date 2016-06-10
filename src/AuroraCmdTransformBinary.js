@@ -1,19 +1,40 @@
 import Stream from "stream";
 import _ from 'lodash';
 import {Parser} from "binary-parser";
+import AuroraConstants from 'AuroraConstants';
 
 export default class AuroraCmdTransformBinary extends Stream.Transform {
 
-    constructor() {
+    static defaultOptions = {
+        dataType: AuroraConstants.DataTypes.UINT8,
+        parseType: undefined,
+        parseTypeLength: undefined
+    };
+
+
+    constructor(dataType) {
 
         super();
+
+        this.options = _.defaultsDeep(options, AuroraCmdTransformBinary.defaultOptions);
+
+        if (typeof this.options.parseType == 'undefined') {
+
+            this.options.parseType = this._getParseTypeFromDataType(dataType);
+        }
+
+        if (typeof this.options.parseTypeLength == 'undefined') {
+
+            this.options.parseTypeLength = this._getParseTypeLengthFromDataType(dataType);
+        }
 
         this.parser = new Parser();
 
         this.leftoverBytes = [];
+        this.hasData = false;
 
         this.parser.array('values', {
-            type: 'int16le',
+            type: this.options.parseType,
             readUntil: 'eof',
             formatter: function(values) {
 
@@ -30,21 +51,23 @@ export default class AuroraCmdTransformBinary extends Stream.Transform {
             this.leftoverBytes = [];
         }
 
-        if (respChunk.length < 2) {
+        if (respChunk.length < this.options.parseTypeLength) {
 
             this.leftoverBytes = respChunk.values();
             done();
         }
 
-        const numBytesLeftover = respChunk.length % 2;
+        this.hasData = true;
+
+        const numBytesLeftover = respChunk.length % this.options.parseTypeLength;
 
         if (numBytesLeftover) {
 
-            this.push(this.parser.parse(respChunk.slice(0, -numBytesLeftover)));
+            this.push((this.hasData ? ',' : '') + this.parser.parse(respChunk.slice(0, -numBytesLeftover)));
             this.leftoverBytes = respChunk.slice(-numBytesLeftover).values();
         }
         else {
-            this.push(this.parser.parse(respChunk));
+            this.push((this.hasData ? ',' : '') + this.parser.parse(respChunk));
         }
 
         done();
@@ -56,7 +79,62 @@ export default class AuroraCmdTransformBinary extends Stream.Transform {
             console.log("Unparsed binary bytes: ", this.leftoverBytes);
         }
 
+        this.hasData = false;
+
         done();
+    }
+
+    _getParseTypeFromDataType(dataType) {
+
+        switch(dataType){
+
+            case AuroraConstants.DataTypes.INT8 :
+                return 'int8';
+
+            case AuroraConstants.DataTypes.UINT16 :
+                return 'uint16le';
+
+            case AuroraConstants.DataTypes.INT16 :
+                return 'int16le';
+
+            case AuroraConstants.DataTypes.UINT32 :
+            case AuroraConstants.DataTypes.STR :
+            case AuroraConstants.DataTypes.PTR :
+
+                return 'uint32le';
+
+            case AuroraConstants.DataTypes.INT32 :
+                return 'int32le';
+
+            case AuroraConstants.DataTypes.UINT8 :
+            case AuroraConstants.DataTypes.CHAR :
+            default:
+                return 'uint8';
+
+        }
+    }
+
+    _getParseTypeFromDataType(dataType) {
+
+        switch(dataType){
+
+            case AuroraConstants.DataTypes.UINT16 :
+            case AuroraConstants.DataTypes.INT16 :
+                return 2;
+
+            case AuroraConstants.DataTypes.UINT32 :
+            case AuroraConstants.DataTypes.STR :
+            case AuroraConstants.DataTypes.PTR :
+            case AuroraConstants.DataTypes.INT32 :
+                return 4;
+
+            case AuroraConstants.DataTypes.UINT8 :
+            case AuroraConstants.DataTypes.CHAR :
+            case AuroraConstants.DataTypes.INT8 :
+            default:
+                return 1;
+
+        }
     }
     
 }

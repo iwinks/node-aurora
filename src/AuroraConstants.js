@@ -32,21 +32,17 @@ module.exports.COMMAND_DIVIDER_ERROR_CHAR = COMMAND_HEADER_ERROR_CHAR;
 
 const DataTypes = {
 
-    CHAR: 1,
-    UINT8: 2,
+    BOOL: 1,
+    CHAR: 2,
+    UINT8: 3,
+    INT8: 4,
+    UINT16: 5,
+    INT16: 6,
+    UINT32: 7,
+    INT32: 8,
+    FLOAT: 9,
+    STR: 10,
+    PTR: 11
+};
 
-}
-
-
-JUGGLE_TYPE_BOOL,
-    JUGGLE_TYPE_CHAR,
-    JUGGLE_TYPE_UINT8,
-    JUGGLE_TYPE_INT8,
-    JUGGLE_TYPE_UINT16,
-    JUGGLE_TYPE_INT16,
-    JUGGLE_TYPE_UINT32,
-    JUGGLE_TYPE_INT32,
-    JUGGLE_TYPE_FLOAT,
-    JUGGLE_TYPE_STR,
-    JUGGLE_TYPE_PTR,
-    JUGGLE_TYPE_BYTES,
+module.exports.DataTypes = DataTypes;

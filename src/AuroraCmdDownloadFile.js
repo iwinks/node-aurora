@@ -13,7 +13,7 @@ export default class AuroraCmdDownloadFile extends AuroraCmdReadFile {
             highWaterMark: 1024
         },
 
-        binaryMode: false
+        binaryDataType: false
     };
 
     constructor(srcPath, destPath, options) {
@@ -45,9 +45,9 @@ export default class AuroraCmdDownloadFile extends AuroraCmdReadFile {
 
             let fileStream = FileSystem.createWriteStream(this.destPath, {highWaterMark: this.options.writeStreamOptions});
 
-            if (this.options.binaryMode){
+            if (this.options.binaryDataType !== false){
 
-                this.respSuccessStreamFront = new AuroraCmdTransformBinary();
+                this.respSuccessStreamFront = new AuroraCmdTransformBinary({dataType: this.options.binaryDataType});
                 this.respSuccessStreamBack = this.respSuccessStreamFront.pipe(fileStream);
             }
             else {
