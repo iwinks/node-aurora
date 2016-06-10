@@ -69,7 +69,7 @@ export default class AuroraCmdTransformBinary extends Stream.Transform {
         if (numBytesLeftover) {
 
             this.push((this.hasData ? ',' : '') + this.parser.parse(respChunk.slice(0, -numBytesLeftover)));
-            this.leftoverBytes = respChunk.slice(-numBytesLeftover).values();
+            this.leftoverBuffer= respChunk.slice(-numBytesLeftover).values();
         }
         else {
             this.push((this.hasData ? ',' : '') + this.parser.parse(respChunk));

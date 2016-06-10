@@ -55,7 +55,7 @@ export default class AuroraCmdTransformReadPacket extends Stream.Transform {
 
         if (respChunk.length < this.options.packetSize) {
 
-            this.leftoverBytes = respChunk;
+            this.leftoverBuffer = respChunk;
 
             console.log('incomplete packet', respChunk);
 
