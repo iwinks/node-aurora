@@ -39,7 +39,7 @@ export default class AuroraCmdTransformBinary extends Stream.Transform {
             type: this.options.parseType,
             readUntil: 'eof',
             formatter: function(values) {
-                console.log('parse', values).join(',');
+                console.log('parse', values);
                 return values.join(',');
             }
         });
