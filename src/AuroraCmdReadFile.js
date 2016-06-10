@@ -10,7 +10,7 @@ export default class AuroraCmdReadFile extends AuroraCmd {
         respTimeout: 180000,
         respTypeSuccess: AuroraCmd.RespTypes.STRING,
         packetMode: true,
-        packetSize: 128
+        packetSize: 127
     };
     
     constructor(srcPath, options) {

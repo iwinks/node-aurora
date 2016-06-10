@@ -8,7 +8,7 @@ export default class AuroraCmdTransformReadPacket extends Stream.Transform {
     static defaultOptions = {
 
         parseTimeout: 500,
-        packetSize: 128
+        packetSize: 127
     };
 
     constructor(cmd, options) {
