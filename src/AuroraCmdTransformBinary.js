@@ -1,7 +1,7 @@
 import Stream from "stream";
 import _ from 'lodash';
 import {Parser} from "binary-parser";
-import AuroraConstants from 'AuroraConstants';
+import AuroraConstants from './AuroraConstants';
 
 export default class AuroraCmdTransformBinary extends Stream.Transform {
 
