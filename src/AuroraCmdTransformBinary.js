@@ -37,7 +37,7 @@ export default class AuroraCmdTransformBinary extends Stream.Transform {
             type: this.options.parseType,
             readUntil: 'eof',
             formatter: function(values) {
-                console.log('parse', values);
+                console.log('parse', values).join(',');
                 return values.join(',');
             }
         });
@@ -102,6 +102,9 @@ export default class AuroraCmdTransformBinary extends Stream.Transform {
             case AuroraConstants.DataTypes.INT16 :
                 return 'int16le';
 
+            case AuroraConstants.DataTypes.FLOAT :
+                return 'floatle';
+
             case AuroraConstants.DataTypes.UINT32 :
             case AuroraConstants.DataTypes.STR :
             case AuroraConstants.DataTypes.PTR :
@@ -128,6 +131,7 @@ export default class AuroraCmdTransformBinary extends Stream.Transform {
                 return 2;
 
             case AuroraConstants.DataTypes.UINT32 :
+            case AuroraConstants.DataTypes.FLOAT :
             case AuroraConstants.DataTypes.STR :
             case AuroraConstants.DataTypes.PTR :
             case AuroraConstants.DataTypes.INT32 :
