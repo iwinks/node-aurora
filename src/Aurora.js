@@ -28,7 +28,6 @@ class Aurora extends EventEmitter {
         serialOptions: {
 
             baudrate: 38400,
-            bufferSize: 127,
             autoOpen: false
         },
         enableLogging: false,
@@ -272,7 +271,10 @@ class Aurora extends EventEmitter {
             console.log(error)
 
             console.timeEnd('command completed');
-            this._processQueue();
+
+            if (this.usbConnected){
+                this._processQueue();
+            }
 
             return error;
         });
