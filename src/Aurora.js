@@ -276,7 +276,8 @@ class Aurora extends EventEmitter {
                 this._processQueue();
             }
 
-            return error;
+            //TODO: understand why I can't just return the error directly here....
+            return Promise.reject(error);
         });
 
     }
