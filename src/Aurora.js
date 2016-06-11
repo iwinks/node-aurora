@@ -14,6 +14,7 @@ import AuroraCmdSessionInfo from './AuroraCmdSessionInfo';
 import AuroraCmdSyncTime from './AuroraCmdSyncTime';
 import AuroraCmdWriteFile from './AuroraCmdWriteFile';
 import AuroraConstants from "./AuroraConstants";
+import {Parser} from "binary-parser";
 import EventEmitter from 'events';
 import fs from "fs";
 import _ from "lodash";
@@ -308,6 +309,7 @@ class Aurora extends EventEmitter {
         console.time('command completed');
     }
 
+
     _processResponse(responseChunk) {
 
         if (this.serialLogStream) this.serialLogStream.write(responseChunk);
@@ -474,16 +476,16 @@ class Aurora extends EventEmitter {
                         if (this._responseUnparsedBuffer.length < 2){
 
                             //we don't actually have to wait if we have a non newline character
-                            if (this._responseUnparsedBuffer.length && this._responseUnparsedBuffer.charAt(0) != '\n'){
+                            //if (this._responseUnparsedBuffer.length && this._responseUnparsedBuffer.charAt(0) != '\n'){
 
                                 //we can safely add this single character to the command response
                                 cmdResponseStream.write(this._responseUnparsedBuffer, 'binary');
                                 this._responseUnparsedBuffer = '';
-                            }
-                            else {
-                                console.log('not enough characters for footer.');
-                                return;
-                            }
+                            //}
+                            //else {
+                            //    console.log('not enough characters for footer.');
+                            //    return;
+                           // }
                         }
 
                         //we have enough characters to contain the footer start so a -1 indicates
@@ -585,6 +587,7 @@ class Aurora extends EventEmitter {
 
         this._processResponseMessageBuffer();
     }
+
 
     _processResponseMessageBuffer() {
 
