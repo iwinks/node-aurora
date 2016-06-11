@@ -118,7 +118,7 @@ export default class AuroraCmdTransformReadPacket extends Stream.Transform {
         this.numRetries++;
 
         //something went wrong, request resend
-        Aurora._serial.write(new Buffer([0xCC]));
+        Aurora._serial.write(new Buffer([0xCC])).drain();
     }
 
     _requestNextPacket() {
