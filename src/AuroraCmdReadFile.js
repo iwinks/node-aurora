@@ -46,8 +46,6 @@ export default class AuroraCmdReadFile extends AuroraCmd {
     }
 
     _setupRespSuccess() {
-
-        console.log('setup resp success, readfile', this.options);
         
         super._setupRespSuccess();
 

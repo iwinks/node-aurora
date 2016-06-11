@@ -26,8 +26,7 @@ export default class AuroraCmdDownloadFile extends AuroraCmdReadFile {
     //the stream here so just create a dummy implementation
     
     _setupRespSuccess() {
-
-        console.log('setup resp success, download file', this.options);
+        
     }
 
     exec() {

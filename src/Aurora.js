@@ -28,7 +28,6 @@ class Aurora extends EventEmitter {
 
             baudrate: 38400,
             bufferSize: 127,
-            flowControl: true,
             autoOpen: false
         },
         enableLogging: false,
