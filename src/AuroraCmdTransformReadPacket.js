@@ -52,7 +52,7 @@ export default class AuroraCmdTransformReadPacket extends Stream.Transform {
 
     _transform(respChunk, encoding, done) {
 
-        console.log('chunk', respChunk.toString());
+        console.log('chunk', respChunk);
 
         if (!respChunk.length) {
 
@@ -123,11 +123,11 @@ export default class AuroraCmdTransformReadPacket extends Stream.Transform {
 
     _requestNextPacket() {
 
-        console.log('requesting next packet');
+        console.time('requesting next packet');
 
         this.numRetries = 0;
 
-        Aurora._serial.write(new Buffer([0xAA]));
+        Aurora._serial.write(new Buffer([0xAA])).drain();
     }
 
 }
