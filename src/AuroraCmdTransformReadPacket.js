@@ -25,7 +25,7 @@ export default class AuroraCmdTransformReadPacket extends Stream.Transform {
         this.headerParser = new Parser()
             .uint8('sync', {assert: 0xAA})
             .uint8('syncCheck', {assert: 0xAA})
-            .uint16('payloadLength');
+            .uint16le('payloadLength');
 
         this.numRetries = 0;
 
@@ -85,7 +85,7 @@ export default class AuroraCmdTransformReadPacket extends Stream.Transform {
         //at this point we have read the header
         //so make sure we have the entire payload
         //and the checksum before we continue
-        if (respChunk.length < (this.payloadLength+2)){
+        if (respChunk.length < (this.payloadLength+4)){
 
             this.leftoverBuffer = respChunk;
             done();
@@ -100,11 +100,11 @@ export default class AuroraCmdTransformReadPacket extends Stream.Transform {
             payloadSum += respChunk[i];
         }
 
-        const checksum = respChunk.readUIntLE(this.payloadLength-2);
+        const checksum = respChunk.readInt32LE(this.payloadLength-4);
 
-        if ((~(payloadSum % (2^16)) & 0x0000FFFF) == checksum){
+        if (~payloadSum == checksum){
 
-            this.push(respChunk.slice(0, -2)); //don't include checksum
+            this.push(respChunk.slice(0, -4)); //don't include checksum
             this._requestNextPacket();
         }
         else {
