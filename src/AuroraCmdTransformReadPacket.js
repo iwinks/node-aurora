@@ -100,7 +100,7 @@ export default class AuroraCmdTransformReadPacket extends Stream.Transform {
             payloadSum += respChunk[i];
         }
 
-        const checksum = respChunk.readInt32LE(this.payloadLength-4);
+        const checksum = respChunk.readInt32LE(this.payloadLength);
 
         if (~payloadSum == checksum){
 
