@@ -24,27 +24,17 @@ export default class AuroraCmdTransformReadPacket extends Stream.Transform {
 
         this.leftoverBuffer = null;
 
-        this.parser = new Parser()
+        this.payloadLength = -1;
+
+        this.headerParser = new Parser()
             .uint8('sync', {assert: 0xAA})
             .uint8('syncCheck', {assert: 0xAA})
-            .uint8('payloadLength')
-            .buffer('payload', {length: 'payloadLength'})
-            .uint8('checksum', {
-                assert: function(checksum){
-
-                    let payloadSum = 0;
-                    for (let i=0; i < this.payload.length; i++){
-                        payloadSum += this.payload[i];
-                    }
-
-                    return (~(payloadSum % 256) & 0x000000FF) == checksum;
-                }
-            });
+            .uint16('payloadLength');
 
         this.numRetries = 0;
 
         this.on('finish', () => {
-           
+
             clearTimeout(this.parseTimer);
         });
 
@@ -69,44 +59,71 @@ export default class AuroraCmdTransformReadPacket extends Stream.Transform {
 
         console.log('chunk length', respChunk.length);
 
-        if (respChunk.length < this.options.packetSize) {
+        //this means we haven't received the header yet
+        if (this.payloadLength == -1) {
 
-            this.leftoverBuffer = respChunk;
+            if (respChunk.length < 4) {
 
-            console.log('incomplete packet', respChunk);
+                this.leftoverBuffer = respChunk;
 
+                console.log('incomplete header', respChunk);
+                done();
+                return;
+            }
+
+            try
+            {
+                let header = this.headerParser.parse(respChunk.slice(0, 4));
+
+                this.respChunk = this.respChunk.slice(4);
+
+                this.payloadLength = header.payloadLength;
+            }
+            catch (e)
+            {
+                this._requestResend('Corrupted header.');
+                done();
+                return;
+            }
+        }
+
+        //at this point we have read the header
+        //so make sure we have the entire payload
+        //and the checksum before we continue
+        if (this.respChunk.length < (this.payloadLength+2)){
+
+            this.leftoverBuffer = this.respChunk;
             done();
             return;
         }
 
-        if (respChunk.length == this.options.packetSize) {
+        //we now have the entire payload too, so calculate
+        //checksum and send the OK if it checks out
+        let payloadSum = 0;
+        for (let i = 0; i < this.payloadLength; i++){
 
-            try {
+            payloadSum += this.respChunk[i];
+        }
 
-                const packet = this.parser.parse(respChunk);
+        const checksum = this.respChunk.readUIntLE(this.payloadLength-2);
 
-                console.log(packet);
+        if ((~(payloadSum % (2^16)) & 0x0000FFFF) == checksum){
 
-                this.push(packet.payload);
-
-                this._requestNextPacket();
-            }
-            catch (e) {
-
-                this._requestResend(e);
-            }
+            this.push(this.respChunk.slice(0, -2)); //don't include checksum
+            this._requestNextPacket();
         }
         else {
 
-            this._requestResend('Chunk size doesn\'t match packet size.');
+            this._requestResend('Failed checksum.');
         }
+
 
         done();
     }
 
-    _requestResend(e) {
+    _requestResend(error) {
 
-        console.log('Requesting resend', e);
+        console.log('Requesting resend', error);
 
         if (this.numRetries >= 3){
 
@@ -115,6 +132,7 @@ export default class AuroraCmdTransformReadPacket extends Stream.Transform {
             return;
         }
 
+        this.payloadLength = -1;
         this.numRetries++;
 
         //something went wrong, request resend
@@ -126,6 +144,7 @@ export default class AuroraCmdTransformReadPacket extends Stream.Transform {
 
         console.time('requesting next packet');
 
+        this.payloadLength = -1;
         this.numRetries = 0;
 
         Aurora._serial.write(new Buffer([0xAA]));
