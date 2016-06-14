@@ -48,7 +48,7 @@ export default class AuroraCmdReadFile extends AuroraCmd {
         
         super._setupRespSuccess();
 
-        if (this.options.packetMode && this.options.packetSize) {
+        if (this.options.packetMode) {
 
             const packetTransform = new AuroraCmdTransformReadPacket(this);
 
