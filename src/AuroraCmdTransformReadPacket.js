@@ -52,7 +52,7 @@ export default class AuroraCmdTransformReadPacket extends Stream.Transform {
             respChunk = Buffer.concat([this.leftoverBuffer, respChunk], this.leftoverBuffer.length + respChunk.length);
             this.leftoverBuffer = null;
         }
-        
+
         //this means we haven't received the header yet
         if (this.payloadLength == -1) {
 
@@ -70,7 +70,7 @@ export default class AuroraCmdTransformReadPacket extends Stream.Transform {
                 console.log('header', respChunk.slice(0, 4));
                 let header = this.headerParser.parse(respChunk.slice(0, 4));
 
-                this.respChunk = this.respChunk.slice(4);
+                respChunk = respChunk.slice(4);
 
                 this.payloadLength = header.payloadLength;
             }
@@ -85,9 +85,9 @@ export default class AuroraCmdTransformReadPacket extends Stream.Transform {
         //at this point we have read the header
         //so make sure we have the entire payload
         //and the checksum before we continue
-        if (this.respChunk.length < (this.payloadLength+2)){
+        if (respChunk.length < (this.payloadLength+2)){
 
-            this.leftoverBuffer = this.respChunk;
+            this.leftoverBuffer = respChunk;
             done();
             return;
         }
@@ -97,14 +97,14 @@ export default class AuroraCmdTransformReadPacket extends Stream.Transform {
         let payloadSum = 0;
         for (let i = 0; i < this.payloadLength; i++){
 
-            payloadSum += this.respChunk[i];
+            payloadSum += respChunk[i];
         }
 
-        const checksum = this.respChunk.readUIntLE(this.payloadLength-2);
+        const checksum = respChunk.readUIntLE(this.payloadLength-2);
 
         if ((~(payloadSum % (2^16)) & 0x0000FFFF) == checksum){
 
-            this.push(this.respChunk.slice(0, -2)); //don't include checksum
+            this.push(respChunk.slice(0, -2)); //don't include checksum
             this._requestNextPacket();
         }
         else {
