@@ -11,7 +11,6 @@ export default class AuroraCmdReadFile extends AuroraCmd {
         respTimeout: 180000,
         respTypeSuccess: AuroraCmd.RespTypes.STRING,
         packetMode: true,
-        packetSize: 127,
         binaryDataType: false
     };
     
@@ -25,7 +24,7 @@ export default class AuroraCmdReadFile extends AuroraCmd {
         let args = [
             srcPathSegments.pop(),
             srcPathSegments.length ? srcPathSegments.join('/') : '/',
-            options.packetMode ? options.packetSize : 0
+            options.packetMode
         ];
         
         super('sd-file-read', args, options);
@@ -51,7 +50,7 @@ export default class AuroraCmdReadFile extends AuroraCmd {
 
         if (this.options.packetMode && this.options.packetSize) {
 
-            const packetTransform = new AuroraCmdTransformReadPacket(this, {packetSize: this.options.packetSize});
+            const packetTransform = new AuroraCmdTransformReadPacket(this);
 
             packetTransform.pipe(this.respSuccessStreamFront);
 

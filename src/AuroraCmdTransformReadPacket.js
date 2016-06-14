@@ -7,16 +7,12 @@ export default class AuroraCmdTransformReadPacket extends Stream.Transform {
 
     static defaultOptions = {
 
-        parseTimeout: 500,
-        packetSize: 127
+        parseTimeout: 500
     };
 
     constructor(cmd, options) {
 
-        super({
-            highWaterMark: options.packetSize || AuroraCmdTransformReadPacket.defaultOptions.packetSize,
-            encoding: null
-        });
+        super();
 
         this.options = _.defaultsDeep(options, AuroraCmdTransformReadPacket.defaultOptions);
 
@@ -56,9 +52,7 @@ export default class AuroraCmdTransformReadPacket extends Stream.Transform {
             respChunk = Buffer.concat([this.leftoverBuffer, respChunk], this.leftoverBuffer.length + respChunk.length);
             this.leftoverBuffer = null;
         }
-
-        console.log('chunk length', respChunk.length);
-
+        
         //this means we haven't received the header yet
         if (this.payloadLength == -1) {
 
@@ -73,6 +67,7 @@ export default class AuroraCmdTransformReadPacket extends Stream.Transform {
 
             try
             {
+                console.log('header', respChunk.slice(0, 4));
                 let header = this.headerParser.parse(respChunk.slice(0, 4));
 
                 this.respChunk = this.respChunk.slice(4);
@@ -81,7 +76,7 @@ export default class AuroraCmdTransformReadPacket extends Stream.Transform {
             }
             catch (e)
             {
-                this._requestResend('Corrupted header.');
+                this._requestResend('Corrupted header: ' + e);
                 done();
                 return;
             }
