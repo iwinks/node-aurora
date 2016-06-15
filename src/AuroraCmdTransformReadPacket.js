@@ -67,12 +67,13 @@ export default class AuroraCmdTransformReadPacket extends Stream.Transform {
 
             try
             {
-                console.log('header', respChunk.slice(0, 4));
                 let header = this.headerParser.parse(respChunk.slice(0, 4));
 
                 respChunk = respChunk.slice(4);
 
                 this.payloadLength = header.payloadLength;
+
+                console.log('payload length', this.payloadLength);
             }
             catch (e)
             {

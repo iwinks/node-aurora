@@ -49,6 +49,7 @@ class Aurora extends EventEmitter {
 
         this._responseUnparsedBuffer = "";
         this._responseMessageBuffer = "";
+        this._responseUnparsedLines = [];
 
         this._responseState = AuroraConstants.ResponseStates.NO_COMMAND;
 
@@ -338,10 +339,10 @@ class Aurora extends EventEmitter {
             this._responseUnparsedLines.push(this._responseUnparsedBuffer.slice(0, newLineIndex+1));
 
             //and remove the line from the unparsed buffer
-            this._responseUnparsedBuffer.slice(newLineIndex+1);
+            this._responseUnparsedBuffer = this._responseUnparsedBuffer.slice(newLineIndex+1);
         }
 
-        while (this._responseUnsparsedLines.length) {
+        while (this._responseUnparsedLines.length) {
 
             let bufferLine = this._responseUnparsedLines.shift();
 
@@ -363,7 +364,7 @@ class Aurora extends EventEmitter {
             }
             else {
 
-                if (bufferLines.indexOf('# ') === 0) {
+                if (bufferLine.indexOf('# ') === 0) {
 
                     console.log('command', bufferLine.toString());
                     this._responseState = AuroraConstants.ResponseStates.COMMAND_HEADER;
@@ -380,7 +381,7 @@ class Aurora extends EventEmitter {
                     this.cmdCurrent.error = true;
                 }
                 else {
-                    console.log('Non command response', line);
+                    console.log('Non command response', bufferLine.toString());
                 }
             }
         }
