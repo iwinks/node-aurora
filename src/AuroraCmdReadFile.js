@@ -1,6 +1,5 @@
 import Aurora from "./Aurora";
 import AuroraCmd from "./AuroraCmd";
-import AuroraCmdTransformReadPacket from "./AuroraCmdTransformReadPacket";
 import AuroraCmdTransformBinary from "./AuroraCmdTransformBinary";
 import _ from "lodash";
 
@@ -47,7 +46,7 @@ export default class AuroraCmdReadFile extends AuroraCmd {
     _setupRespSuccess() {
         
         super._setupRespSuccess();
-        
+
         if (this.options.binaryDataType !== false){
         
             this.respSuccessStreamBack = this.respSuccessStreamBack.pipe(new AuroraCmdTransformBinary({dataType: this.options.binaryDataType}));

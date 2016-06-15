@@ -331,7 +331,7 @@ class Aurora extends EventEmitter {
         //pick up where we left off
         this._responseUnparsedBuffer = Buffer.isBuffer(this._responseUnparsedBuffer) ? Buffer.concat([this._responseUnparsedBuffer, responseChunk]) : responseChunk;
 
-        while (this._responseUnparsedBuffer.length) {
+        while (this._responseUnparsedBuffer && this._responseUnparsedBuffer.length) {
 
             //if we aren't in the middle of processing a response
             if (this._responseState != AuroraConstants.ResponseStates.COMMAND_RESPONSE){
@@ -445,6 +445,8 @@ class Aurora extends EventEmitter {
 
         if (~payloadSum == checksum){
 
+            const respStream = this.cmdCurrent.error ? this.cmdCurrent.respErrorStreamFront : this.cmdCurrent.respSuccessStreamFront;
+
             respStream.write(this._responseUnparsedBuffer.slice(0, -4)); //don't include checksum
 
             this._processResponsePacketSuccess();
@@ -532,10 +534,10 @@ class Aurora extends EventEmitter {
         }
 
         //remove the entire response and footer from the unparsed buffer
-        this._responseUnparsedBuffer = this._responseUnparsedBuffer.slice(endOfFooterIndex + 2);
+        this._responseUnparsedBuffer = this._responseUnparsedBuffer.slice(footerEndIndex + 2);
 
         //reset response state
-        this._responseState = _AuroraConstants2.default.ResponseStates.NO_COMMAND;
+        this._responseState = AuroraConstants.default.ResponseStates.NO_COMMAND;
 
         //finally end response stream which signals end of command
         respStream.end();

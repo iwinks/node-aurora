@@ -45,11 +45,8 @@ export default class AuroraCmdTransformBinary extends Stream.Transform {
 
     _transform(respChunk, encoding, done) {
 
-        console.log('chunk', respChunk);
-
         if (!respChunk.length) {
 
-            console.log('no data in binary chunk');
             done();
             return;
         }
@@ -67,11 +64,7 @@ export default class AuroraCmdTransformBinary extends Stream.Transform {
             return;
         }
 
-        
-
         const numBytesLeftover = respChunk.length % this.options.parseTypeLength;
-
-        console.log('bytes leftover', numBytesLeftover);
 
         let parsedChunk;
 
@@ -85,8 +78,6 @@ export default class AuroraCmdTransformBinary extends Stream.Transform {
 
             parsedChunk = this.parser.parse(respChunk);
         }
-
-        console.log(parsedChunk);
 
         this.push((this.hasData ? ',' : '') + parsedChunk.values);
 
