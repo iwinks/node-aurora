@@ -537,7 +537,7 @@ class Aurora extends EventEmitter {
         this._responseUnparsedBuffer = this._responseUnparsedBuffer.slice(footerEndIndex + 2);
 
         //reset response state
-        this._responseState = AuroraConstants.default.ResponseStates.NO_COMMAND;
+        this._responseState = AuroraConstants.ResponseStates.NO_COMMAND;
 
         //finally end response stream which signals end of command
         respStream.end();
