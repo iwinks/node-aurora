@@ -137,7 +137,7 @@ export default class AuroraCmdTransformReadPacket extends Stream.Transform {
 
     _requestNextPacket() {
 
-        console.time('requesting next packet');
+        console.log('requesting next packet');
 
         this.payloadLength = -1;
         this.numRetries = 0;

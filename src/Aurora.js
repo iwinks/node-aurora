@@ -325,270 +325,65 @@ class Aurora extends EventEmitter {
         //pick up where we left off
         this._responseUnparsedBuffer += responseChunk.toString('binary');
 
-        while (this._responseUnparsedBuffer){
+        while (true) {
 
-            switch (this._responseState){
+            //look for a newline
+            const newLineIndex = this._responseUnparsedBuffer.indexOf('\n');
 
-                //this is the initial state, when no command response is currently being
-                //parsed. Response received during this state may be the beginning of a command
-                //or log/data messages generated in between commands. That's what makes this so damn tricky...
-                case AuroraConstants.ResponseStates.NO_COMMAND:
-
-                    //store the position of the command prompt in the unparsed response
-                    let cmdPromptIndex = this._responseUnparsedBuffer.indexOf(AuroraConstants.COMMAND_PROMPT);
-
-                    //if the prompt is not found, check if a portion of the unparsed response
-                    //can be safely added to the message buffer
-                    if (cmdPromptIndex === -1){
-
-                        //if we don't have enough characters to contain the command prompt, wait for more
-                        if (this._responseUnparsedBuffer.length < AuroraConstants.COMMAND_PROMPT.length){
-
-                            //console.log('not enough characters for cmd prompt');
-                            return;
-                        }
-
-                        //we have enough characters to contain the command prompt so a -1 indicates
-                        //at least some of the unparsed string contains message data
-
-                        //store what we know can't contain the command response in the message buffer
-                        this._responseMessageBuffer += this._responseUnparsedBuffer.slice(0, 1 - AuroraConstants.COMMAND_PROMPT.length);
-
-                        //and strip out the message data from the unparsed buffer
-                        this._responseUnparsedBuffer = this._responseUnparsedBuffer.substr(1 - AuroraConstants.COMMAND_PROMPT.length);
-                    }
-                    //we have found the command prompt, so everything before must be message data
-                    else {
-
-                        //add message data to buffer
-                        this._responseMessageBuffer += this._responseUnparsedBuffer.slice(0, cmdPromptIndex);
-
-                        //and remove it from unparsed buffer
-                        this._responseUnparsedBuffer = this._responseUnparsedBuffer.slice(cmdPromptIndex+AuroraConstants.COMMAND_PROMPT.length);
-
-                        //now we are ready to move to the next state
-                        this._responseState = AuroraConstants.ResponseStates.COMMAND_STRING;
-                    }
-
-                    break;
-
-                case AuroraConstants.ResponseStates.COMMAND_STRING:
-
-                    //wait until we have a newline in unparsed buffer
-                    //since that indicates a completed command string
-
-                    let endOfCommandIndex = this._responseUnparsedBuffer.indexOf('\n');
-
-                    if (endOfCommandIndex !== -1) {
-
-                        let cmdString = this._responseUnparsedBuffer.slice(0, endOfCommandIndex-1);
-
-                        //TODO: check if cmdString corresponds to current command. restart state machine if not...
-
-                        //remove command string and newline from unparsed buffer
-                        this._responseUnparsedBuffer = this._responseUnparsedBuffer.slice(endOfCommandIndex+1);
-
-                        //now we are read to move to the next state
-                        this._responseState = AuroraConstants.ResponseStates.COMMAND_HEADER;
-                    }
-                    //do we have too many characters for a command string?
-                    else if (this._responseUnparsedBuffer.length > AuroraConstants.COMMAND_STRING_MAX_LENGTH){
-
-                        //assume error and restart state machine
-                        //we'll keep the unparsed buffer in tact in case we can recover
-                        //console.log('Expected command string.\nUnparsed buffer: ' + this._responseUnparsedBuffer);
-                        this._responseState = AuroraConstants.ResponseStates.NO_COMMAND;
-                    }
-                    else {
-
-                        //console.log('No end of command found, but still within limit.');
-                        return;
-                    }
-
-                    break;
-
-                case AuroraConstants.ResponseStates.COMMAND_HEADER:
-
-                    //wait until we have a newline in unparsed buffer
-                    //since that indicates we have a completed header
-                    let endOfHeaderIndex = this._responseUnparsedBuffer.indexOf('\n');
-
-                    if (endOfHeaderIndex !== -1){
-
-                        //make sure we have the minimum required header characters
-                        if (endOfHeaderIndex < AuroraConstants.COMMAND_DIVIDER_MIN_LENGTH) {
-
-                            //console.log('Expected longer header.\nUnparsed buffer: ' + this._responseUnparsedBuffer);
-                            this._responseState = AuroraConstants.ResponseStates.NO_COMMAND;
-                        }
-                        //check for success header
-                        else if (this._responseUnparsedBuffer.charAt(0) == AuroraConstants.COMMAND_DIVIDER_SUCCESS_CHAR &&
-                            this._responseUnparsedBuffer.charAt(endOfHeaderIndex-2) == AuroraConstants.COMMAND_DIVIDER_SUCCESS_CHAR){
-
-                            this._responseUnparsedBuffer = this._responseUnparsedBuffer.substr(endOfHeaderIndex+1);
-                            this._responseState = AuroraConstants.ResponseStates.COMMAND_RESPONSE;
-                            this.cmdCurrent.error = false;
-                            //console.log("end of header found: " + this._responseUnparsedBuffer);
-                        }
-                        else if (this._responseUnparsedBuffer.charAt(0) == AuroraConstants.COMMAND_DIVIDER_ERROR_CHAR &&
-                            this._responseUnparsedBuffer.charAt(endOfHeaderIndex-2) == AuroraConstants.COMMAND_DIVIDER_ERROR_CHAR){
-
-                            this._responseUnparsedBuffer = this._responseUnparsedBuffer.substr(endOfHeaderIndex+1);
-                            this._responseState = AuroraConstants.ResponseStates.COMMAND_RESPONSE;
-                            this.cmdCurrent.error = true;
-                        }
-                        else {
-                            //console.log('Expected header char.\nUnparsed buffer: ' + this._responseUnparsedBuffer);
-                            this._responseState = AuroraConstants.ResponseStates.NO_COMMAND;
-                        }
-                    }
-                    else if (this._responseUnparsedBuffer.length > AuroraConstants.COMMAND_DIVIDER_MAX_LENGTH){
-
-                        //console.log('Expected completed header.\nUnparsed buffer: ' + this._responseUnparsedBuffer);
-                        this._responseState = AuroraConstants.ResponseStates.NO_COMMAND;
-                    }
-                    else {
-
-                        //console.log('No end of header found, but still within limit.');
-                        return;
-                    }
-
-                    break;
-
-                case AuroraConstants.ResponseStates.COMMAND_RESPONSE:
-
-                    let startOfFooterIndex;
-                    var cmdResponseStream;
-
-                    if (this.cmdCurrent.error){
-
-                        startOfFooterIndex = this._responseUnparsedBuffer.indexOf('\n' + AuroraConstants.COMMAND_DIVIDER_ERROR_CHAR);
-                        cmdResponseStream = this.cmdCurrent.respErrorStreamFront;
-                    }
-                    else {
-
-                        startOfFooterIndex = this._responseUnparsedBuffer.indexOf('\n' + AuroraConstants.COMMAND_DIVIDER_SUCCESS_CHAR);
-                        cmdResponseStream = this.cmdCurrent.respSuccessStreamFront;
-                    }
-
-                    //if we don't see the footer, we can safely assume the entire buffer is command response if we have enough chars
-                    if (startOfFooterIndex === -1) {
-
-                        //if we don't have enough characters to contain the divider char + newline
-                        //we might need to wait for more characters
-                        if (this._responseUnparsedBuffer.length < 2){
-
-                            //we don't actually have to wait if we have a non newline character
-                            //if (this._responseUnparsedBuffer.length && this._responseUnparsedBuffer.charAt(0) != '\n'){
-
-                                //we can safely add this single character to the command response
-                                cmdResponseStream.write(this._responseUnparsedBuffer, 'binary');
-                                this._responseUnparsedBuffer = '';
-                            //}
-                            //else {
-                            //    console.log('not enough characters for footer.');
-                            //    return;
-                           // }
-                        }
-
-                        //we have enough characters to contain the footer start so a -1 indicates
-                        //at least some of the unparsed string contains command response
-
-                        //store what we know can't contain the footer in the response
-                        cmdResponseStream.write(this._responseUnparsedBuffer.slice(0, -1), 'binary');
-                       // console.log('command response: ' + this._responseUnparsedBuffer.slice(0, -1));
-
-                        //and strip out the response data from the unparsed buffer
-                        this._responseUnparsedBuffer = this._responseUnparsedBuffer.substr(-1);
-                    }
-                    else {
-
-                        //everything up to the beginning of footer is safe to assume is command response
-                        if (startOfFooterIndex >= 2){
-                            cmdResponseStream.write(this._responseUnparsedBuffer.slice(0,startOfFooterIndex - 1), 'binary');
-                            //console.log('command partial response: ' + this._responseUnparsedBuffer.slice(0,startOfFooterIndex - 1));
-                        }
-
-                        this._responseUnparsedBuffer = this._responseUnparsedBuffer.substr(startOfFooterIndex);
-                        this._responseState = AuroraConstants.ResponseStates.COMMAND_FOOTER;
-                    }
-
-                    break;
-
-                case AuroraConstants.ResponseStates.COMMAND_FOOTER:
-
-                    //we know the first char is a newline, so make sure to look for the second
-                    //newline with an offset of 1
-                    let endOfFooterIndex = this._responseUnparsedBuffer.indexOf('\n', 1);
-                    cmdResponseStream = this.cmdCurrent.error ? this.cmdCurrent.respErrorStreamFront : this.cmdCurrent.respSuccessStreamFront;
-
-                    //did we find a second newline?
-                    if (endOfFooterIndex !== -1){
-
-                        //make sure we have the minimum required divider characters
-                        if (endOfFooterIndex < AuroraConstants.COMMAND_DIVIDER_MIN_LENGTH) {
-
-                            //console.log('Expected longer footer.\nUnparsed buffer: ' + this._responseUnparsedBuffer);
-
-                            //not enough characters between start and end of divider, so everything up to the
-                            //second newline must be command response. Stay in this state since we have a second newline already
-                            cmdResponseStream.write(this._responseUnparsedBuffer.slice(0, endOfFooterIndex - 1), 'binary');
-                            this._responseUnparsedBuffer = this._responseUnparsedBuffer.substr(endOfFooterIndex);
-                        }
-                        //check for success footer
-                        else if (this._responseUnparsedBuffer.charAt(1) == AuroraConstants.COMMAND_DIVIDER_SUCCESS_CHAR &&
-                            this._responseUnparsedBuffer.charAt(endOfFooterIndex-2) == AuroraConstants.COMMAND_DIVIDER_SUCCESS_CHAR){
-
-                            this._responseUnparsedBuffer = this._responseUnparsedBuffer.substr(endOfFooterIndex+1);
-
-                            this._responseState = AuroraConstants.ResponseStates.NO_COMMAND;
-
-                            //console.log('all done!');
-                            cmdResponseStream.end();
-                        }
-                        else if (this._responseUnparsedBuffer.charAt(1) == AuroraConstants.COMMAND_DIVIDER_ERROR_CHAR &&
-                            this._responseUnparsedBuffer.charAt(endOfFooterIndex-2) == AuroraConstants.COMMAND_DIVIDER_ERROR_CHAR){
-
-                            this._responseUnparsedBuffer = this._responseUnparsedBuffer.substr(endOfFooterIndex+1);
-
-                            this._responseState = AuroraConstants.ResponseStates.NO_COMMAND;
-
-                            //console.log('all done!');
-                            cmdResponseStream.end();
-                        }
-                        else {
-                            //console.log('Expected footer char.\nUnparsed buffer: ' + this._responseUnparsedBuffer);
-
-                            //since we haven't seen a completed footer, we have to assume that everything we have seen so far is command response
-                            //including the previous newline so add it to the command response and move back to the command response state.
-                            cmdResponseStream.write('\n');
-                            this._responseUnparsedBuffer = this._responseUnparsedBuffer.substr(1);
-                            this._responseState = AuroraConstants.ResponseStates.COMMAND_RESPONSE;
-                        }
-                    }
-                    else if (this._responseUnparsedBuffer.length > AuroraConstants.COMMAND_DIVIDER_MAX_LENGTH){
-
-                        //console.log('Expected completed footer.\nUnparsed buffer: ' + this._responseUnparsedBuffer);
-
-                        //since we haven't seen a completed footer, we have to assume that everything we have seen so far is command response
-                        //including the previous newline so add it to the command response and move back to the command response state.
-                        cmdResponseStream.write('\n');
-                        this._responseUnparsedBuffer = this._responseUnparsedBuffer.substr(1);
-                        this._responseState = AuroraConstants.ResponseStates.COMMAND_RESPONSE;
-                    }
-                    else {
-
-                        //console.log('No end of footer found, but still within limit.');
-                        return;
-                    }
-
-                    break;
-
+            if (newLineIndex == -1) {
+                break;
             }
 
+            //push line into buffer, including the newline delimiter
+            this._responseUnparsedLines.push(this._responseUnparsedBuffer.slice(0, newLineIndex+1));
+
+            //and remove the line from the unparsed buffer
+            this._responseUnparsedBuffer.slice(newLineIndex+1);
         }
 
-        this._processResponseMessageBuffer();
+        while (this._responseUnsparsedLines.length) {
+
+            let bufferLine = this._responseUnparsedLines.shift();
+
+            if (this._responseState == AuroraConstants.ResponseStates.COMMAND_RESPONSE) {
+
+                const respStream = this.cmdCurrent.error ? this.cmdCurrent.respErrorStreamFront
+                                                         : this.cmdCurrent.respSuccessStreamFront;
+
+                if (bufferLine.indexOf('----------------------') === 0 || bufferLine.indexOf('~~~~~~~~~~~~~~~~~~~~~~~~') === 0) {
+
+                    console.log('success/error footer', bufferLine.toString());
+                    this._responseState = AuroraConstants.ResponseStates.NO_COMMAND;
+                    respStream.end();
+                }
+                else {
+
+                    respStream.write(bufferLine, 'binary');
+                }
+            }
+            else {
+
+                if (bufferLines.indexOf('# ') === 0) {
+
+                    console.log('command', bufferLine.toString());
+                    this._responseState = AuroraConstants.ResponseStates.COMMAND_HEADER;
+                }
+                else if (bufferLine.indexOf('----------------------') === 0) {
+
+                    console.log('success header', bufferLine.toString());
+                    this._responseState = AuroraConstants.ResponseStates.COMMAND_RESPONSE;
+                }
+                else if (bufferLine.indexOf('~~~~~~~~~~~~~~~~~~~~~~') === 0) {
+
+                    console.log('error header', bufferLine.toString());
+                    this._responseState = AuroraConstants.ResponseStates.COMMAND_RESPONSE;
+                    this.cmdCurrent.error = true;
+                }
+                else {
+                    console.log('Non command response', line);
+                }
+            }
+        }
     }
 
 
