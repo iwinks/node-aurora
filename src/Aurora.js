@@ -47,9 +47,8 @@ class Aurora extends EventEmitter {
         this.cmdCurrent = false;
         this.firmwareInfo = undefined;
 
-        this._responseUnparsedBuffer = "";
-        this._responseMessageBuffer = "";
-        this._responseUnparsedLines = [];
+        this._responseUnparsedBuffer = null;
+        this._responsePayloadLength = 0;
 
         this._responseState = AuroraConstants.ResponseStates.NO_COMMAND;
 
@@ -316,6 +315,12 @@ class Aurora extends EventEmitter {
 
     _processResponse(responseChunk) {
 
+        if (!respChunk.length) {
+
+            console.log('No data in response');
+            return;
+        }
+
         if (this.serialLogStream) this.serialLogStream.write(responseChunk);
 
         if (!this.cmdCurrent && this._responseState != AuroraConstants.ResponseStates.NO_COMMAND){
@@ -324,57 +329,38 @@ class Aurora extends EventEmitter {
         }
 
         //pick up where we left off
-        this._responseUnparsedBuffer += responseChunk.toString('binary');
+        this._responseUnparsedBuffer = Buffer.isBuffer(this._responseUnparsedBuffer) ? Buffer.concat([this.responseUnparsedBuffer, responseChunk]) : responseChunk;
 
-        while (true) {
+        while (this._responseUnparsedBuffer.length) {
 
-            //look for a newline
-            const newLineIndex = this._responseUnparsedBuffer.indexOf('\n');
+            //if we aren't in the middle of processing a response
+            if (this._responseState != AuroraConstants.ResponseStates.COMMAND_RESPONSE){
 
-            if (newLineIndex == -1) {
-                break;
-            }
+                const newLineIndex = this._responseUnparsedBuffer.indexOf('\n');
 
-            //push line into buffer, including the newline delimiter
-            this._responseUnparsedLines.push(this._responseUnparsedBuffer.slice(0, newLineIndex+1));
+                //no newline, so wait for the next chunk
+                if (newLineIndex == -1) {
 
-            //and remove the line from the unparsed buffer
-            this._responseUnparsedBuffer = this._responseUnparsedBuffer.slice(newLineIndex+1);
-        }
-
-        while (this._responseUnparsedLines.length) {
-
-            let bufferLine = this._responseUnparsedLines.shift();
-
-            if (this._responseState == AuroraConstants.ResponseStates.COMMAND_RESPONSE) {
-
-                const respStream = this.cmdCurrent.error ? this.cmdCurrent.respErrorStreamFront
-                                                         : this.cmdCurrent.respSuccessStreamFront;
-
-                if (bufferLine.indexOf('----------------------') === 0 || bufferLine.indexOf('~~~~~~~~~~~~~~~~~~~~~~~~') === 0) {
-
-                    console.log('success/error footer', bufferLine.toString());
-                    this._responseState = AuroraConstants.ResponseStates.NO_COMMAND;
-                    respStream.end();
+                    return;
                 }
-                else {
 
-                    respStream.write(bufferLine, 'binary');
-                }
-            }
-            else {
+                //we must have a newline now so grab it
+                const bufferLine = this._responseUnparsedBuffer.slice(0, newlineIndex);
+
+                //and remove it from the unparsed buffer
+                this._responseUnparsedBuffer = this._responseUnparsedBuffer.slice(newlineIndex+1);
 
                 if (bufferLine.indexOf('# ') === 0) {
 
                     console.log('command', bufferLine.toString());
                     this._responseState = AuroraConstants.ResponseStates.COMMAND_HEADER;
                 }
-                else if (bufferLine.indexOf('----------------------') === 0) {
+                else if (bufferLine.indexOf('------------------------') === 0) {
 
                     console.log('success header', bufferLine.toString());
                     this._responseState = AuroraConstants.ResponseStates.COMMAND_RESPONSE;
                 }
-                else if (bufferLine.indexOf('~~~~~~~~~~~~~~~~~~~~~~') === 0) {
+                else if (bufferLine.indexOf('~~~~~~~~~~~~~~~~~~~~~~~~') === 0) {
 
                     console.log('error header', bufferLine.toString());
                     this._responseState = AuroraConstants.ResponseStates.COMMAND_RESPONSE;
@@ -382,6 +368,108 @@ class Aurora extends EventEmitter {
                 }
                 else {
                     console.log('Non command response', bufferLine.toString());
+                }
+            }
+            else {
+
+                //now we are receiving the response
+
+                let respStream;
+                let footerIndex;
+
+                if (this.cmdCurrent.error){
+
+                    respStream = this.cmdCurrent.respErrorStreamFront;
+                    footerIndex = this._responseUnparsedBuffer.indexOf('\n~~~~~~~~~~~~~~~~~~~~~~~~');
+                }
+                else {
+
+                    respStream = this.cmdCurrent.respSuccessStreamFront;
+                    footerIndex = this._responseUnparsedBuffer.indexOf('\n------------------------');
+                }
+
+
+                //check for packet mode on this command
+                if (this.cmdCurrent.options.packetMode){
+
+                    //if we have the footer at location zero, the command is finished
+                    if (footerIndex === 0){
+
+                        respStream.end();
+                    }
+
+                    //have we received the header?
+                    if (!this._responsePayloadLength) {
+
+                        //if we don't have enough bytes for the header, wait for more
+                        if (this._responseUnparsedBuffer.length < 4) {
+
+                            return;
+                        }
+
+                        if (this._responseUnparsedBuffer[0] != 0xAA || this.responseUnparsedBuffer[1] != 0xAA){
+
+                            console.log('Corrupted header. Requesting resend...');
+
+                            this._serial.write(new Buffer([0xCC]));
+
+                            return;
+                        }
+
+                        this._responsePayloadLength = this._responseUnparsedBuffer.readUInt16LE(2);
+
+                        //success, so remove it from the unparsed buffer
+                        this._responseUnparsedBuffer = this._responseUnparsedBuffer.slice(4);
+                    }
+
+                    //at this point we have read the header
+                    //so make sure we have the entire payload
+                    //and the checksum before we continue
+                    if (this._responseUnparsedBuffer.length < (this._responsePayloadLength+4)){
+
+                        return;
+                    }
+
+                    //we now have the entire payload too, so calculate
+                    //checksum and send the OK if it checks out
+                    let payloadSum = 0;
+                    for (let i = 0; i < this._responsePayloadLength; i++){
+
+                        payloadSum += this._responseUnparsedBuffer[i];
+                    }
+
+                    const checksum = this._responseUnparsedBuffer.readInt32LE(this._responsePayloadLength);
+
+                    if (~payloadSum == checksum){
+
+                        respStream.write(this._responseUnparsedBuffer.slice(0, -4)); //don't include checksum
+
+                        this._serial.write(new Buffer([0xAA]));
+                    }
+                    else {
+
+                        console.log('Failed checksum. Requesting resend...');
+
+                        this._serial.write(new Buffer([0xCC]));
+                    }
+
+                    this._responseUnparsedBuffer = null;
+                    this._responsePayloadLength = 0;
+
+                    return;
+                }
+                else {
+
+                    //we aren't in packet mode so just buffer entire response until we see a footer
+
+                    if (footerIndex != -1) {
+
+                        respStream.write(this._responseUnparsedBuffer.slice(0, footerIndex));
+
+                        this._responseState = AuroraConstants.ResponseStates.NO_COMMAND;
+
+                        respStream.end();
+                    }
                 }
             }
         }

@@ -12,7 +12,7 @@ module.exports.ResponseStates = ResponseStates;
 const AURORA_USB_VID = "0x0483";
 module.exports.AURORA_USB_VID = AURORA_USB_VID;
 
-const COMMAND_PROMPT = "# ";
+const COMMAND_PROMPT = "\n# ";
 module.exports.COMMAND_PROMPT = COMMAND_PROMPT;
 
 const COMMAND_STRING_MAX_LENGTH = 128;

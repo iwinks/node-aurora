@@ -16,7 +16,8 @@ export default class AuroraCmd {
     };
     
     static defaultOptions = {
-        
+
+        packetMode: false,                              //commands that return a lot of data can use this mode
         respTimeout: 5000,                              //how long the command has to finish before timing out
         respTypeSuccess: AuroraCmd.RespTypes.ARRAY,     //by default, success response returns array of lines
         respTypeError: AuroraCmd.RespTypes.OBJECT,      //and error returns object { error: #, message: "" }
@@ -143,7 +144,8 @@ export default class AuroraCmd {
         this.respTypeError = AuroraCmd.RespTypes.OBJECT;
         this.respError = { error: errorCode, message: errorMessage};
 
-        Aurora._responseUnparsedBuffer = "";
+        //TODO: make sure this is still necessary
+        Aurora._responseUnparsedBuffer = null;
         Aurora._responseState = AuroraConstants.ResponseStates.NO_COMMAND;
         
         this.respErrorStreamFront.end();
