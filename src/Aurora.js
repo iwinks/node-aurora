@@ -315,7 +315,7 @@ class Aurora extends EventEmitter {
 
     _processResponse(responseChunk) {
 
-        if (!respChunk.length) {
+        if (!responseChunk.length) {
 
             console.log('No data in response');
             return;
@@ -329,17 +329,17 @@ class Aurora extends EventEmitter {
         }
 
         //pick up where we left off
-        this._responseUnparsedBuffer = Buffer.isBuffer(this._responseUnparsedBuffer) ? Buffer.concat([this.responseUnparsedBuffer, responseChunk]) : responseChunk;
+        this._responseUnparsedBuffer = Buffer.isBuffer(this._responseUnparsedBuffer) ? Buffer.concat([this._responseUnparsedBuffer, responseChunk]) : responseChunk;
 
         while (this._responseUnparsedBuffer.length) {
 
             //if we aren't in the middle of processing a response
             if (this._responseState != AuroraConstants.ResponseStates.COMMAND_RESPONSE){
 
-                const newLineIndex = this._responseUnparsedBuffer.indexOf('\n');
+                const newlineIndex = this._responseUnparsedBuffer.indexOf('\n');
 
                 //no newline, so wait for the next chunk
-                if (newLineIndex == -1) {
+                if (newlineIndex == -1) {
 
                     return;
                 }
@@ -392,12 +392,6 @@ class Aurora extends EventEmitter {
                 //check for packet mode on this command
                 if (this.cmdCurrent.options.packetMode){
 
-                    //if we have the footer at location zero, the command is finished
-                    if (footerIndex === 0){
-
-                        respStream.end();
-                    }
-
                     //have we received the header?
                     if (!this._responsePayloadLength) {
 
@@ -407,7 +401,7 @@ class Aurora extends EventEmitter {
                             return;
                         }
 
-                        if (this._responseUnparsedBuffer[0] != 0xAA || this.responseUnparsedBuffer[1] != 0xAA){
+                        if (this._responseUnparsedBuffer[0] != 0xAA || this._responseUnparsedBuffer[1] != 0xAA){
 
                             console.log('Corrupted header. Requesting resend...');
 
@@ -461,15 +455,21 @@ class Aurora extends EventEmitter {
                 else {
 
                     //we aren't in packet mode so just buffer entire response until we see a footer
+                    if (footerIndex == -1) {
 
-                    if (footerIndex != -1) {
-
-                        respStream.write(this._responseUnparsedBuffer.slice(0, footerIndex));
-
-                        this._responseState = AuroraConstants.ResponseStates.NO_COMMAND;
-
-                        respStream.end();
+                        return
                     }
+
+                    respStream.write(this._responseUnparsedBuffer.slice(0, footerIndex));
+                }
+
+                if (footerIndex != -1) {
+
+                    this._responseUnparsedBuffer = this._responseUnparsedBuffer.slice(this._responseUnparsedBuffer.indexOf('\n', footerIndex)+1);
+
+                    this._responseState = AuroraConstants.ResponseStates.NO_COMMAND;
+
+                    respStream.end();
                 }
             }
         }
