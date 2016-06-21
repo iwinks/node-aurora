@@ -337,7 +337,7 @@ class Aurora extends EventEmitter {
             if (this._responseState != AuroraConstants.ResponseStates.COMMAND_RESPONSE){
 
                 //look for first newline
-                const newlineIndex = this._responseUnparsedBuffer.indexOf('\r\n');
+                const newlineIndex = this._responseUnparsedBuffer.indexOf('\n');
 
                 //no newline, so wait for the next chunk
                 if (newlineIndex == -1) {
@@ -346,10 +346,10 @@ class Aurora extends EventEmitter {
                 }
 
                 //we must have a newline now so grab the line
-                const bufferLine = this._responseUnparsedBuffer.slice(0, newlineIndex);
+                const bufferLine = this._responseUnparsedBuffer.slice(0, newlineIndex).toString().trim();
 
                 //and remove it from the unparsed buffer
-                this._responseUnparsedBuffer = this._responseUnparsedBuffer.slice(newlineIndex+2);
+                this._responseUnparsedBuffer = this._responseUnparsedBuffer.slice(newlineIndex+1);
 
                 //is the line a command prompt?
                 if (bufferLine.indexOf(AuroraConstants.COMMAND_PROMPT) === 0) {
@@ -467,7 +467,7 @@ class Aurora extends EventEmitter {
         this._responsePayloadLength = 0;
         this._responseUnparsedBuffer = null;
 
-        //if we have retried to many times, don't send the error byte
+        //if we have retried too many times, don't send the error byte
         //which will cause the firmware side to timeout and end the response
         if (this._responsePacketRetries > AuroraConstants.AURORA_PACKET_MAX_RETRIES) {
 

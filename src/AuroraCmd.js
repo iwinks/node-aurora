@@ -145,8 +145,8 @@ export default class AuroraCmd {
         this.respError = { error: errorCode, message: errorMessage};
 
         //TODO: make sure this is still necessary
-        //Aurora._responseUnparsedBuffer = null;
-        //Aurora._responseState = AuroraConstants.ResponseStates.NO_COMMAND;
+        Aurora._responseUnparsedBuffer = null;
+        Aurora._responseState = AuroraConstants.ResponseStates.NO_COMMAND;
         
         this.respErrorStreamFront.end();
     }

@@ -32,12 +32,11 @@ export default class AuroraCmdOsInfo extends AuroraCmd {
                 this.respSuccess.version = {
                     major: parseInt(version[1]),
                     minor: parseInt(version[2]),
-                    build: version[3] != undefined ? parseInt(version[3]) : 0
+                    build: version[3] != undefined ? parseInt(version[3]) : 0,
                 };
 
                 this.respSuccess.version.number = (this.respSuccess.version.major * 10000) + (this.respSuccess.version.minor * 100) + this.respSuccess.version.build;
-
-                this.respSuccess.versionString = 'v' + this.respSuccess.version.major + '.' + this.respSuccess.version.minor + '.' + this.respSuccess.version.build;
+                this.respSuccess.version.string = 'v' + this.respSuccess.version.major + '.' + this.respSuccess.version.minor + '.' + this.respSuccess.version.build;
 
                 delete this.respSuccess.auroraOsVersion; //TODO: removed once old firmware versions are deprecated
 
