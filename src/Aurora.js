@@ -13,8 +13,8 @@ import AuroraCmdReadDir from './AuroraCmdReadDir';
 import AuroraCmdSessionInfo from './AuroraCmdSessionInfo';
 import AuroraCmdSyncTime from './AuroraCmdSyncTime';
 import AuroraCmdWriteFile from './AuroraCmdWriteFile';
+import AuroraCmdUnloadProfile from './AuroraCmdUnloadProfile';
 import AuroraConstants from "./AuroraConstants";
-import {Parser} from "binary-parser";
 import EventEmitter from 'events';
 import fs from "fs";
 import _ from "lodash";
@@ -560,7 +560,8 @@ const AuroraCommands = {
     'readDir'      : AuroraCmdReadDir,
     'sessionInfo'  : AuroraCmdSessionInfo,
     'syncTime'     : AuroraCmdSyncTime,
-    'writeFile'    : AuroraCmdWriteFile
+    'writeFile'    : AuroraCmdWriteFile,
+    'unloadProfile': AuroraCmdUnloadProfile
 };
 
 
@@ -588,7 +589,7 @@ export default decorateWithCommands(new Aurora());
 export { Aurora, AuroraCmd, AuroraCmdCopyFile, AuroraCmdReadDir, AuroraCmdReadFile,
          AuroraCmdDeleteDir, AuroraCmdDeleteFile, AuroraCmdDownloadFile,
          AuroraCmdFlash, AuroraCmdGetProfiles, AuroraCmdOsInfo, AuroraCmdReadDir,
-         AuroraCmdSessionInfo, AuroraCmdSyncTime, AuroraCmdWriteFile };
+         AuroraCmdSessionInfo, AuroraCmdSyncTime, AuroraCmdWriteFile, AuroraCmdUnloadProfile };
 
 
 
