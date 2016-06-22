@@ -18,7 +18,7 @@ export default class AuroraCmd {
     static defaultOptions = {
 
         packetMode: false,                              //commands that return a lot of data can use this mode
-        respTimeout: 5000,                              //how long the command has to finish before timing out
+        respWatchdogTimeout: 1000,                      //how long the command has to finish before timing out
         respTypeSuccess: AuroraCmd.RespTypes.ARRAY,     //by default, success response returns array of lines
         respTypeError: AuroraCmd.RespTypes.OBJECT,      //and error returns object { error: #, message: "" }
         respTypeSuccessOptions: {},
@@ -111,17 +111,8 @@ export default class AuroraCmd {
 
     //called when a command is ready to be processed
     exec() {
-    
-        //this timer fires if the command response
-        //isn't received within the specified time
-        if (this.options.respTimeout) {
-        
-            this.respTimer = setTimeout(() => {
 
-                this.triggerError(-1, "Aurora command timed out.");
-            
-            }, this.options.respTimeout);
-        }
+        this.petWatchdog();
 
         this._setupRespSuccess();
         this._setupRespError();
@@ -136,6 +127,23 @@ export default class AuroraCmd {
 
         //write command string to input stream,
         Aurora._serial.write(this.toString() + '\n');
+    }
+
+    petWatchdog() {
+
+        //this timer fires if the command response
+        //isn't received within the specified time
+        if (this.options.respWatchdogTimeout) {
+
+            clearTimeout(this.respTimer);
+
+            this.respTimer = setTimeout(() => {
+
+                this.triggerError(-1, "Aurora command timed out.");
+
+            }, this.options.respWatchdogTimeout);
+        }
+
     }
 
     triggerError(errorCode, errorMessage){
@@ -153,6 +161,8 @@ export default class AuroraCmd {
 
     //process response
     _onRespSuccessData(data) {
+
+        this.cmdCurrent.petWatchdog();
 
         switch (this.options.respTypeSuccess){
 
@@ -172,6 +182,8 @@ export default class AuroraCmd {
     }
 
     _onRespErrorData(data) {
+
+        this.cmdCurrent.petWatchdog();
 
         switch (this.options.respTypeError){
 

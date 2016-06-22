@@ -375,7 +375,7 @@ class Aurora extends EventEmitter {
                 }
             }
             else {
-
+                
                 //check for packet mode on this command
                 if (this.cmdCurrent.options.packetMode){
 

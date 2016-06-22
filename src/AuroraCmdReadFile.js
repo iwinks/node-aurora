@@ -7,7 +7,6 @@ export default class AuroraCmdReadFile extends AuroraCmd {
     
     static defaultOptions = {
         
-        respTimeout: 180000,
         respTypeSuccess: AuroraCmd.RespTypes.STRING,
         packetMode: true,
         binaryDataType: false

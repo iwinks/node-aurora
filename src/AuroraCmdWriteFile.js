@@ -8,7 +8,6 @@ export default class AuroraCmdWriteFile extends AuroraCmd {
 
         renameIfExisting: false,
         silentMode: true,
-        respTimeout: 180000,
         respTypeSuccess: AuroraCmd.RespTypes.OBJECT
     };
 
@@ -49,6 +48,7 @@ export default class AuroraCmdWriteFile extends AuroraCmd {
             Aurora._serial.write('\r\r\r\r');
             readStream.removeAllListeners();
         }).on('data', (data) => {
+            this.petWatchdog();
             console.log(data);
             Aurora._serial.write(data);
         });
