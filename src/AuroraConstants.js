@@ -3,7 +3,8 @@ const ResponseStates = {
     NO_COMMAND: 0,
     COMMAND_HEADER: 1,
     COMMAND_RESPONSE: 2,
-    COMMAND_FOOTER: 3
+    COMMAND_FOOTER: 3,
+    FLUSHING_RESPONSE: 4
 };
 
 module.exports.ResponseStates = ResponseStates;

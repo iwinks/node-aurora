@@ -39,7 +39,7 @@ export default class AuroraCmdDownloadFile extends AuroraCmdReadFile {
 
             super._setupRespSuccess();
 
-            this.respSuccessStreamBack = this.respSuccessStreamBack.pipe(FileSystem.createWriteStream(this.destPath, {highWaterMark: this.options.writeStreamOptions}));
+            this.respSuccessStreamBack = this.respSuccessStreamBack.pipe(FileSystem.createWriteStream(this.destPath, this.options.writeStreamOptions));
 
             super.exec();
         });

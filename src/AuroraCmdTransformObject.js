@@ -74,7 +74,7 @@ export default class AuroraCmdTransformObject extends Stream.Transform {
                 }
                 else {
 
-                    let date = moment(object[key], [moment.ISO_8601, "MMM DD YYYY - HH:mm:ss"], true);
+                    let date = moment(object[key], [moment.ISO_8601, "MMM DD YYYY - HH:mm:ss", "YYYY-MM-DD HH:mm:ss:SSS"], true);
 
                     if (date.isValid()){
                         object[key] = +date;

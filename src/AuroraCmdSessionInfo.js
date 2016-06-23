@@ -44,6 +44,16 @@ export default class AuroraCmdSessionInfo extends AuroraCmdReadFile {
 
             _.forEach(this.respSuccess.events[15], (sleepEvent, key) => {
 
+                //if this is the last event, we need to
+                //mark the stage time even if it hasn't changed
+                numEventsToProcess--;
+
+                //some error checking, even though this shouldn't happen...
+                if (isNaN(sleepEvent.date) || isNaN(sleepEvent.flags)){
+                    console.log('Corrupted sleep event!', sleepEvent);
+                    return;
+                }
+
                 let stage = Math.log2(sleepEvent.flags & 0x000000FF);
 
                 if (!timeOffset){
@@ -66,11 +76,6 @@ export default class AuroraCmdSessionInfo extends AuroraCmdReadFile {
                     sleeping = false;
                     this.respSuccess.sleepAwakenings++;
                 }
-
-
-                //if this is the last event, we need to
-                //mark the stage time even if it hasn't changed
-                numEventsToProcess--;
 
                 if (currentStage != stage || !numEventsToProcess){
 

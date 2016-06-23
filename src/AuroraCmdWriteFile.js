@@ -45,12 +45,12 @@ export default class AuroraCmdWriteFile extends AuroraCmd {
 
         readStream.on('end', () => {
             console.log('finished');
-            Aurora._serial.write('\r\r\r\r');
+            Aurora.write('\r\r\r\r');
             readStream.removeAllListeners();
         }).on('data', (data) => {
             this.petWatchdog();
             console.log(data);
-            Aurora._serial.write(data);
+            Aurora.write(data);
         });
 
     }

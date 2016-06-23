@@ -107,22 +107,26 @@ class Aurora extends EventEmitter {
             let tryConnect = (serialPorts) => {
 
                 let serialPort = serialPorts.pop();
+
                 console.log('try connect', serialPort);
 
                 this._serial = new SerialPort(serialPort, this.options.serialOptions);
 
                 this._serial.once('close', () => {
+
                     console.log('serialDisconnect', 'expected');
                     this.emit('serialDisconnect');
                 });
 
                 this._serial.once('disconnect', (e) => {
+
                     console.log('serialDisconnect', e);
                     this.emit('serialDisconnect', e);
                 });
 
                 this._serial.once('error', (e) => {
-                    console.log('serialError', e);
+
+                    this.emit('serialDisconnect', e);
                     this.emit('error', e);
                 });
 
@@ -150,7 +154,7 @@ class Aurora extends EventEmitter {
 
                     //make sure there aren't any dangling
                     //characters on the command line
-                    this._serial.write(_.repeat("\b", 64));
+                    this.write(_.repeat("\b", 64));
 
                     this._serial.addListener('data', this._processResponse.bind(this));
 
@@ -229,10 +233,18 @@ class Aurora extends EventEmitter {
     }
 
     disconnect() {
-        console.log(this);
-        this._serial.close();
+
+        this.emit('serialDisconnect');
     }
 
+    write(data) {
+
+        if (this.usbConnected){
+
+            this._serial.write(data);
+        }
+    }
+    
     execCmd(cmd) {
 
         if (cmd == undefined) {
@@ -291,7 +303,7 @@ class Aurora extends EventEmitter {
             this.cmdCurrent = false;
         }
 
-        this._serial.removeListener('data', this._processResponse);
+        this._serial.removeAllListeners();
 
         for (let cmd of this._processingQueue){
             cmd.triggerError(-1, "Lost connection to Aurora.");
@@ -323,7 +335,11 @@ class Aurora extends EventEmitter {
 
         if (this.serialLogStream) this.serialLogStream.write(responseChunk);
 
-        if (!this.cmdCurrent && this._responseState != AuroraConstants.ResponseStates.NO_COMMAND){
+        if (this.cmdCurrent) {
+
+            this.cmdCurrent.petWatchdog();
+        }
+        else if (this._responseState != AuroraConstants.ResponseStates.NO_COMMAND) {
             console.log('No command for this response...');
             return;
         }
@@ -375,7 +391,7 @@ class Aurora extends EventEmitter {
                 }
             }
             else {
-                
+
                 //check for packet mode on this command
                 if (this.cmdCurrent.options.packetMode){
 
@@ -480,7 +496,10 @@ class Aurora extends EventEmitter {
             return;
         }
 
-        this._serial.write(new Buffer([AuroraConstants.AURORA_PACKET_ERROR_BYTE]));
+        this._flushResponse(() => {
+            this.write(new Buffer([AuroraConstants.AURORA_PACKET_ERROR_BYTE]));
+        });
+
     }
 
     _processResponsePacketSuccess() {
@@ -489,7 +508,7 @@ class Aurora extends EventEmitter {
         this._responseUnparsedBuffer = null;
         this._responsePayloadLength = 0;
 
-        this._serial.write(new Buffer([AuroraConstants.AURORA_PACKET_OK_BYTE]));
+        this.write(new Buffer([AuroraConstants.AURORA_PACKET_OK_BYTE]));
     }
 
     _processResponseFooter() {
@@ -543,6 +562,23 @@ class Aurora extends EventEmitter {
         respStream.end();
 
         return true;
+    }
+
+    _flushResponse(onFlushComplete) {
+
+        const currentResponseState = this._responseState;
+
+        this._responseState = AuroraConstants.ResponseStates.FLUSHING_RESPONSE;
+
+        this._serial.flush(() => {
+
+            this._responseState = currentResponseState;
+
+            if (typeof onFlushComplete == 'function'){
+
+                onFlushComplete();
+            }
+        });
     }
 
 }
