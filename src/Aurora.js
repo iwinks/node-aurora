@@ -570,15 +570,21 @@ class Aurora extends EventEmitter {
 
         this._responseState = AuroraConstants.ResponseStates.FLUSHING_RESPONSE;
 
-        this._serial.flush(() => {
-
-            this._responseState = currentResponseState;
-
-            if (typeof onFlushComplete == 'function'){
-
-                onFlushComplete();
-            }
-        });
+        //give the buffer chance to fill up
+        //before we flush it
+        setTimeout(() => {
+    
+            this._serial.flush(() => {
+        
+                this._responseState = currentResponseState;
+        
+                if (typeof onFlushComplete == 'function'){
+            
+                    onFlushComplete();
+                }
+            });
+            
+        }, 1000);
     }
 
 }
