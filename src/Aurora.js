@@ -234,7 +234,7 @@ class Aurora extends EventEmitter {
 
     disconnect() {
 
-        this.emit('serialDisconnect');
+        this._serial.close();
     }
 
     write(data) {
