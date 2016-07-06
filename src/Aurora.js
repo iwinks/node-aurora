@@ -369,6 +369,10 @@ class Aurora extends EventEmitter {
                 //and remove it from the unparsed buffer
                 this._responseUnparsedBuffer = this._responseUnparsedBuffer.slice(newlineIndex+1);
 
+                if (!bufferLine.length){
+                    continue;
+                }
+
                 //is the line a command prompt?
                 if (bufferLine.indexOf(AuroraConstants.COMMAND_PROMPT) === 0) {
 
@@ -394,24 +398,37 @@ class Aurora extends EventEmitter {
             }
             else {
 
+                //if we still don't know what the buffer contains
+                //we need at least 3 characters to find out
+                if (this._responseUnparsedBuffer.length < 3) {
+                    return;
+                }
+
                 //check for packet mode on this command
-                if (this.cmdCurrent.options.packetMode){
+                if (this.cmdCurrent.options.packetMode && this._responseState != AuroraConstants.ResponseStates.COMMAND_FOOTER) {
 
-                    if (this._processResponseFooter()) {
+                    //this means we are already processing a packet
+                    if (this._responsePayloadLength || (this._responseUnparsedBuffer[0] == AuroraConstants.AURORA_PACKET_SYNC_BYTE &&
+                                                        this._responseUnparsedBuffer[1] == AuroraConstants.AURORA_PACKET_SYNC_BYTE)) {
 
-                        continue;
+                        this._processResponsePacket();
                     }
+                    else if (this._responseUnparsedBuffer.indexOf('\r\n' + this.cmdCurrent.error ? AuroraConstants.COMMAND_DIVIDER_ERROR_CHAR
+                                                                                                 : AuroraConstants.COMMAND_DIVIDER_SUCCESS_CHAR) != -1) {
+                        this._processResponseFooter();
+                    }
+                    else {
 
-                    if (!this._processResponsePacket()){
-
-                        return;
+                        //if we don't have either one, something is wrong
+                        console.log('Malformed packet or serial stream out of sync. Requesting resend...');
+                        this._processResponsePacketError();
                     }
                 }
-                //we are not in packet mode, so just try and process the footer
+                //we are not in packet mode (or are already processing the footer), so just try and process the footer
                 //buffering the response if it's not found
-                else if (!this._processResponseFooter()){
+                else {
 
-                    return;
+                    this._processResponseFooter();
                 }
             }
         }
@@ -421,21 +438,6 @@ class Aurora extends EventEmitter {
 
         //have we received the header?
         if (!this._responsePayloadLength) {
-
-            //if we don't have enough bytes for the header, wait for more
-            if (this._responseUnparsedBuffer.length < 4) {
-
-                return false;
-            }
-
-            if (this._responseUnparsedBuffer[0] != AuroraConstants.AURORA_PACKET_SYNC_BYTE || this._responseUnparsedBuffer[1] != AuroraConstants.AURORA_PACKET_SYNC_BYTE){
-
-                console.log('Corrupted header. Requesting resend...');
-
-                this._processResponsePacketError();
-
-                return false;
-            }
 
             this._responsePayloadLength = this._responseUnparsedBuffer.readUInt16LE(2);
 
@@ -448,7 +450,7 @@ class Aurora extends EventEmitter {
         //and the checksum before we continue
         if (this._responseUnparsedBuffer.length < (this._responsePayloadLength+4)){
 
-            return false;
+            return;
         }
 
         //we now have the entire payload too, so calculate
@@ -474,8 +476,6 @@ class Aurora extends EventEmitter {
             console.log('Failed checksum. Requesting resend...');
             this._processResponsePacketError();
         }
-
-        return true;
     }
 
     _processResponsePacketError() {
@@ -530,8 +530,10 @@ class Aurora extends EventEmitter {
 
         if (footerStartIndex == -1) {
 
-            return false;
+            return;
         }
+
+        this._responseState = AuroraConstants.ResponseStates.COMMAND_FOOTER;
 
         //we've seen the start of the footer,
         //but make sure we've also seen the end
@@ -539,7 +541,7 @@ class Aurora extends EventEmitter {
 
         if (footerEndIndex == -1) {
 
-            return false;
+            return;
         }
 
         //if we had any data before the footer, write it out now
@@ -562,8 +564,6 @@ class Aurora extends EventEmitter {
 
         //finally end response stream which signals end of command
         respStream.end();
-
-        return true;
     }
 
     _flushResponse(onFlushComplete) {
