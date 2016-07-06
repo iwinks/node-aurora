@@ -372,22 +372,25 @@ class Aurora extends EventEmitter {
                 if (!bufferLine.length){
                     continue;
                 }
-
-                //is the line a command prompt?
-                if (bufferLine.indexOf(AuroraConstants.COMMAND_PROMPT) === 0) {
-
-                    this._responseState = AuroraConstants.ResponseStates.COMMAND_HEADER;
-                }
-                //is the line an success header?
-                else if (bufferLine.indexOf(AuroraConstants.COMMAND_DIVIDER_SUCCESS_STRING) === 0) {
-
-                    this._responseState = AuroraConstants.ResponseStates.COMMAND_RESPONSE;
-                }
-                //is the line an error header?
-                else if (bufferLine.indexOf(AuroraConstants.COMMAND_DIVIDER_ERROR_STRING) === 0) {
-
-                    this._responseState = AuroraConstants.ResponseStates.COMMAND_RESPONSE;
-                    this.cmdCurrent.error = true;
+                
+                if (this.cmdCurrent) {
+    
+                    //is the line a command prompt?
+                    if (bufferLine.indexOf(AuroraConstants.COMMAND_PROMPT) === 0) {
+        
+                        this._responseState = AuroraConstants.ResponseStates.COMMAND_HEADER;
+                    }
+                    //is the line an success header?
+                    else if (bufferLine.indexOf(AuroraConstants.COMMAND_DIVIDER_SUCCESS_STRING) === 0) {
+        
+                        this._responseState = AuroraConstants.ResponseStates.COMMAND_RESPONSE;
+                    }
+                    //is the line an error header?
+                    else if (bufferLine.indexOf(AuroraConstants.COMMAND_DIVIDER_ERROR_STRING) === 0) {
+        
+                        this._responseState = AuroraConstants.ResponseStates.COMMAND_RESPONSE;
+                        this.cmdCurrent.error = true;
+                    }
                 }
                 //must be log / data response
                 else {
@@ -430,6 +433,8 @@ class Aurora extends EventEmitter {
 
                     this._processResponseFooter();
                 }
+
+                return;
             }
         }
     }
@@ -518,21 +523,20 @@ class Aurora extends EventEmitter {
         let respStream;
         let footerStartIndex;
 
-        if (this.cmdCurrent.error) {
+        respStream = this.cmdCurrent.error ? this.cmdCurrent.respErrorStreamFront : this.cmdCurrent.respSuccessStreamFront;
 
-            respStream = this.cmdCurrent.respErrorStreamFront;
-            footerStartIndex = this._responseUnparsedBuffer.indexOf('\r\n' + AuroraConstants.COMMAND_DIVIDER_ERROR_STRING);
-        } else {
-
-            respStream = this.cmdCurrent.respSuccessStreamFront;
-            footerStartIndex = this._responseUnparsedBuffer.indexOf('\r\n' + AuroraConstants.COMMAND_DIVIDER_SUCCESS_STRING);
-        }
+        footerStartIndex = this._responseUnparsedBuffer.indexOf('\r\n' + AuroraConstants.COMMAND_DIVIDER_SUCCESS_STRING);
 
         if (footerStartIndex == -1) {
 
-            return;
-        }
+            footerStartIndex = this._responseUnparsedBuffer.indexOf('\r\n' + AuroraConstants.COMMAND_DIVIDER_ERROR_STRING);
 
+            if (footerStartIndex == -1) {
+
+                return;
+            }
+        }
+        
         this._responseState = AuroraConstants.ResponseStates.COMMAND_FOOTER;
 
         //we've seen the start of the footer,

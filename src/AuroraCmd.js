@@ -156,7 +156,7 @@ export default class AuroraCmd {
         Aurora._responseUnparsedBuffer = null;
         Aurora._responseState = AuroraConstants.ResponseStates.NO_COMMAND;
 
-        if (this.respErrorStream){
+        if (this.respErrorStreamFront){
             this.respErrorStreamFront.end();
         }
     }
