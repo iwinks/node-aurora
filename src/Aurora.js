@@ -306,7 +306,7 @@ class Aurora extends EventEmitter {
         this._serial.removeAllListeners();
         this._processingQueue = [];
 
-        for (let i = 0; i < this._processingQueue.length){
+        for (let i = 0; i < this._processingQueue.length; i++){
 
             this._processingQueue.shift().triggerError(-1, "Lost connection to Aurora.");
         }
