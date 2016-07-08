@@ -143,7 +143,14 @@ export default class AuroraCmd {
 
             }, this.options.respWatchdogTimeout);
         }
-
+    }
+    
+    fail() {
+        
+    }
+    
+    succeed() {
+        
     }
 
     triggerError(errorCode, errorMessage){
@@ -151,10 +158,7 @@ export default class AuroraCmd {
         this.error = true;
         this.respTypeError = AuroraCmd.RespTypes.OBJECT;
         this.respError = { error: errorCode, message: errorMessage};
-
-        //TODO: make sure this is still necessary
-        Aurora._responseUnparsedBuffer = null;
-        Aurora._responseState = AuroraConstants.ResponseStates.NO_COMMAND;
+        
 
         if (this.respErrorStreamFront){
             this.respErrorStreamFront.end();

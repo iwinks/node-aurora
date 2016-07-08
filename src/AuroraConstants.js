@@ -2,9 +2,11 @@ const ResponseStates = {
 
     NO_COMMAND: 0,
     COMMAND_HEADER: 1,
-    COMMAND_RESPONSE: 2,
-    COMMAND_FOOTER: 3,
-    FLUSHING_RESPONSE: 4
+    COMMAND_RESPONSE_SUCCESS: 2,
+    COMMAND_RESPONSE_ERROR: 3,
+    COMMAND_FOOTER_SUCCESS: 4,
+    COMMAND_FOOTER_ERROR: 5,
+    FLUSHING_RESPONSE: 6
 };
 
 module.exports.ResponseStates = ResponseStates;

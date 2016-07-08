@@ -1,4 +1,4 @@
-import SerialPort from "serialport";
+import SerialPort from 'serialport';
 import usbDetect from 'usb-detection';
 import AuroraCmd from './AuroraCmd';
 import AuroraCmdReadFile from './AuroraCmdReadFile';
@@ -14,10 +14,11 @@ import AuroraCmdSessionInfo from './AuroraCmdSessionInfo';
 import AuroraCmdSyncTime from './AuroraCmdSyncTime';
 import AuroraCmdWriteFile from './AuroraCmdWriteFile';
 import AuroraCmdUnloadProfile from './AuroraCmdUnloadProfile';
-import AuroraConstants from "./AuroraConstants";
+import AuroraConstants from './AuroraConstants';
+import AuroraResponseSerialParser from './AuroraResponseSerialParser';
 import EventEmitter from 'events';
-import fs from "fs";
-import _ from "lodash";
+import fs from 'fs';
+import _ from 'lodash';
 
 
 class Aurora extends EventEmitter {
@@ -48,13 +49,16 @@ class Aurora extends EventEmitter {
         this.firmwareInfo = undefined;
 
         this._responsePacketRetries = 0;
-        this._responseUnparsedBuffer = null;
-        this._responsePayloadLength = 0;
-        this._responseState = AuroraConstants.ResponseStates.NO_COMMAND;
 
         this.serialLogStream = this.options.enableLogging ? fs.createWriteStream(this.options.logFilePath) : null;
 
         this.on('serialDisconnect', this._onSerialDisconnect);
+
+        AuroraResponseSerialParser.on('packetSuccess', this._onPacketSuccess);
+        AuroraResponseSerialParser.on('packetError', this._onPacketError);
+        AuroraResponseSerialParser.on('commandEnd', this._onCommandEnd);
+        AuroraResponseSerialParser.on('responseSuccess', this._onResponseSuccess);
+        AuroraResponseSerialParser.on('responseError', this._onResponseError);
 
         usbDetect.on('add:' + parseInt(AuroraConstants.AURORA_USB_VID), (device) => { console.log('usb detected', device); this.emit('usbConnect', device);});
         usbDetect.on('remove:' + parseInt(AuroraConstants.AURORA_USB_VID), (device) => this.emit('usbDisconnect', device));
@@ -131,9 +135,15 @@ class Aurora extends EventEmitter {
                 });
 
                 this._serial.open(error => {
+                    
                     console.log('serial open', error);
+                    
                     const handleError = (error) => {
+
+                        this._serial.removeAllListeners();
+                        
                         console.log('connection error', error);
+                        
                         if (!serialPorts.length) {
 
                             this.usbConnecting = false;
@@ -156,31 +166,39 @@ class Aurora extends EventEmitter {
                     //characters on the command line
                     this.write(_.repeat("\b", 64));
 
-                    this._serial.addListener('data', this._processResponse.bind(this));
-
-                    this.execCmd(new AuroraCmdOsInfo()).then(firmwareInfo => {
-
-                        clearTimeout(this.connectTimer);
-
-                        this.firmwareInfo = firmwareInfo;
-
-                        this.usbConnecting = false;
-                        this.usbConnected = true;
-
-                        this.emit('serialConnect');
-
-                        resolve(firmwareInfo);
-
-                    }).catch((error) => {
-
-                        this._serial.close();
-
-                        handleError(error);
+                    this._serial.flush(() => {
                         
-                    });
+                        AuroraResponseSerialParser.reset();
+
+                        this._processingQueue = [];
+
+                        this._serial.addListener('data', this._processResponse.bind(this));
+
+                        this.execCmd(new AuroraCmdOsInfo()).then(firmwareInfo => {
+
+                            clearTimeout(this.connectTimer);
+
+                            this.firmwareInfo = firmwareInfo;
+
+                            this.usbConnecting = false;
+                            this.usbConnected = true;
+
+                            this.emit('serialConnect');
+
+                            resolve(firmwareInfo);
+
+                        }).catch((error) => {
+
+                            this._serial.close();
+
+                            handleError(error);
+
+                        });
 
 
-                    this._processQueue();
+                        this._processQueue();
+
+                    })
 
                 });
 
@@ -331,7 +349,6 @@ class Aurora extends EventEmitter {
 
         if (!responseChunk.length) {
 
-            console.log('No data in response');
             return;
         }
 
@@ -341,154 +358,20 @@ class Aurora extends EventEmitter {
 
             this.cmdCurrent.petWatchdog();
         }
-        else if (this._responseState != AuroraConstants.ResponseStates.NO_COMMAND) {
-            console.log('No command for this response...');
-            return;
-        }
 
-        //pick up where we left off
-        this._responseUnparsedBuffer = Buffer.isBuffer(this._responseUnparsedBuffer) ? Buffer.concat([this._responseUnparsedBuffer, responseChunk]) : responseChunk;
-
-        while (this._responseUnparsedBuffer && this._responseUnparsedBuffer.length) {
-
-            //if we aren't in the middle of processing a response
-            if (this._responseState != AuroraConstants.ResponseStates.COMMAND_RESPONSE){
-
-                //look for first newline
-                const newlineIndex = this._responseUnparsedBuffer.indexOf('\n');
-
-                //no newline, so wait for the next chunk
-                if (newlineIndex == -1) {
-
-                    return;
-                }
-
-                //we must have a newline now so grab the line
-                const bufferLine = this._responseUnparsedBuffer.slice(0, newlineIndex).toString().trim();
-
-                //and remove it from the unparsed buffer
-                this._responseUnparsedBuffer = this._responseUnparsedBuffer.slice(newlineIndex+1);
-
-                if (!bufferLine.length){
-                    continue;
-                }
-                
-                if (this.cmdCurrent) {
-    
-                    //is the line a command prompt?
-                    if (bufferLine.indexOf(AuroraConstants.COMMAND_PROMPT) === 0) {
-        
-                        this._responseState = AuroraConstants.ResponseStates.COMMAND_HEADER;
-                    }
-                    //is the line an success header?
-                    else if (bufferLine.indexOf(AuroraConstants.COMMAND_DIVIDER_SUCCESS_STRING) === 0) {
-        
-                        this._responseState = AuroraConstants.ResponseStates.COMMAND_RESPONSE;
-                    }
-                    //is the line an error header?
-                    else if (bufferLine.indexOf(AuroraConstants.COMMAND_DIVIDER_ERROR_STRING) === 0) {
-        
-                        this._responseState = AuroraConstants.ResponseStates.COMMAND_RESPONSE;
-                        this.cmdCurrent.error = true;
-                    }
-                }
-                //must be log / data response
-                else {
-
-                    //TODO: generate log and data events
-                    console.log('Non command response', bufferLine.toString());
-                }
-            }
-            else {
-
-                //if we still don't know what the buffer contains
-                //we need at least 3 characters to find out
-                if (this._responseUnparsedBuffer.length < 3) {
-                    return;
-                }
-
-                //check for packet mode on this command
-                if (this.cmdCurrent.options.packetMode && this._responseState != AuroraConstants.ResponseStates.COMMAND_FOOTER) {
-
-                    //this means we are already processing a packet
-                    if (this._responsePayloadLength || (this._responseUnparsedBuffer[0] == AuroraConstants.AURORA_PACKET_SYNC_BYTE &&
-                                                        this._responseUnparsedBuffer[1] == AuroraConstants.AURORA_PACKET_SYNC_BYTE)) {
-
-                        this._processResponsePacket();
-                    }
-                    else if (this._responseUnparsedBuffer.indexOf('\r\n' + this.cmdCurrent.error ? AuroraConstants.COMMAND_DIVIDER_ERROR_CHAR
-                                                                                                 : AuroraConstants.COMMAND_DIVIDER_SUCCESS_CHAR) != -1) {
-                        this._processResponseFooter();
-                    }
-                    else {
-
-                        //if we don't have either one, something is wrong
-                        console.log('Malformed packet or serial stream out of sync. Requesting resend...');
-                        this._processResponsePacketError();
-                    }
-                }
-                //we are not in packet mode (or are already processing the footer), so just try and process the footer
-                //buffering the response if it's not found
-                else {
-
-                    this._processResponseFooter();
-                }
-
-                return;
-            }
-        }
+        AuroraResponseSerialParser.parseChunk(responseChunk);
     }
 
-    _processResponsePacket() {
+    _onPacketSuccess = (response) => {
 
-        //have we received the header?
-        if (!this._responsePayloadLength) {
+        this.cmdCurrent.respSuccessStreamFront.write(response);
+        this._responsePacketRetries = 0;
+        this.write(new Buffer([AuroraConstants.AURORA_PACKET_OK_BYTE]));
+    };
 
-            this._responsePayloadLength = this._responseUnparsedBuffer.readUInt16LE(2);
-
-            //success, so remove it from the unparsed buffer
-            this._responseUnparsedBuffer = this._responseUnparsedBuffer.slice(4);
-        }
-
-        //at this point we have read the header
-        //so make sure we have the entire payload
-        //and the checksum before we continue
-        if (this._responseUnparsedBuffer.length < (this._responsePayloadLength+4)){
-
-            return;
-        }
-
-        //we now have the entire payload too, so calculate
-        //checksum and send the OK if it checks out
-        let payloadSum = 0;
-        for (let i = 0; i < this._responsePayloadLength; i++){
-
-            payloadSum += this._responseUnparsedBuffer[i];
-        }
-
-        const checksum = this._responseUnparsedBuffer.readInt32LE(this._responsePayloadLength);
-
-        if (~payloadSum == checksum){
-
-            const respStream = this.cmdCurrent.error ? this.cmdCurrent.respErrorStreamFront : this.cmdCurrent.respSuccessStreamFront;
-
-            respStream.write(this._responseUnparsedBuffer.slice(0, -4)); //don't include checksum
-
-            this._processResponsePacketSuccess();
-        }
-        else {
-
-            console.log('Failed checksum. Requesting resend...');
-            this._processResponsePacketError();
-        }
-    }
-
-    _processResponsePacketError() {
+    _onPacketError = (error) => {
 
         this._responsePacketRetries++;
-
-        this._responsePayloadLength = 0;
-        this._responseUnparsedBuffer = null;
 
         //if we have retried too many times, don't send the error byte
         //which will cause the firmware side to timeout and end the response
@@ -503,96 +386,36 @@ class Aurora extends EventEmitter {
             return;
         }
 
-        this._flushResponse(() => {
-            this.write(new Buffer([AuroraConstants.AURORA_PACKET_ERROR_BYTE]));
-        });
-
-    }
-
-    _processResponsePacketSuccess() {
-
-        this._responsePacketRetries = 0;
-        this._responseUnparsedBuffer = null;
-        this._responsePayloadLength = 0;
-
-        this.write(new Buffer([AuroraConstants.AURORA_PACKET_OK_BYTE]));
-    }
-
-    _processResponseFooter() {
-
-        let respStream;
-        let footerStartIndex;
-
-        respStream = this.cmdCurrent.error ? this.cmdCurrent.respErrorStreamFront : this.cmdCurrent.respSuccessStreamFront;
-
-        footerStartIndex = this._responseUnparsedBuffer.indexOf('\r\n' + AuroraConstants.COMMAND_DIVIDER_SUCCESS_STRING);
-
-        if (footerStartIndex == -1) {
-
-            footerStartIndex = this._responseUnparsedBuffer.indexOf('\r\n' + AuroraConstants.COMMAND_DIVIDER_ERROR_STRING);
-
-            if (footerStartIndex == -1) {
-
-                return;
-            }
-        }
-        
-        this._responseState = AuroraConstants.ResponseStates.COMMAND_FOOTER;
-
-        //we've seen the start of the footer,
-        //but make sure we've also seen the end
-        const footerEndIndex = this._responseUnparsedBuffer.indexOf('\r\n', footerStartIndex+2);
-
-        if (footerEndIndex == -1) {
-
-            return;
-        }
-
-        //if we had any data before the footer, write it out now
-        //should NOT happen in packet mode...
-        if (footerStartIndex !== 0) {
-
-            if (this.cmdCurrent.options.packetMode) {
-
-                console.log('Leftover data before footer in packet mode.');
-            }
-
-            respStream.write(this._responseUnparsedBuffer.slice(0, footerStartIndex));
-        }
-
-        //remove the entire response and footer from the unparsed buffer
-        this._responseUnparsedBuffer = this._responseUnparsedBuffer.slice(footerEndIndex + 2);
-
-        //reset response state
-        this._responseState = AuroraConstants.ResponseStates.NO_COMMAND;
-
-        //finally end response stream which signals end of command
-        respStream.end();
-    }
-
-    _flushResponse(onFlushComplete) {
-
-        const currentResponseState = this._responseState;
-
-        this._responseState = AuroraConstants.ResponseStates.FLUSHING_RESPONSE;
-
-        //give the buffer chance to fill up
-        //before we flush it
         setTimeout(() => {
-    
-            this._serial.flush(() => {
-        
-                this._responseState = currentResponseState;
-        
-                if (typeof onFlushComplete == 'function'){
-            
-                    onFlushComplete();
-                }
-            });
-            
-        }, 1000);
-    }
 
+            this._serial.flush(() => {
+
+                this.write(new Buffer([AuroraConstants.AURORA_PACKET_ERROR_BYTE]));
+            });
+
+        }, 1000);
+    };
+    
+    _onResponseSuccess = (response) => {
+        
+        this.cmdCurrent.respSuccessStreamFront.write(response);
+    };
+    
+    _onResponseError = (response) => {
+
+        this.cmdCurrent.respErrorStreamFront.write(response);
+    };
+
+    _onCommandEnd = (error) => {
+
+        if (error) {
+
+            this.cmdCurrent.respErrorStreamFront.end();
+        }
+        else {
+            this.cmdCurrent.respSuccessStreamFront.end();
+        }
+    };
 }
 
 const AuroraCommands = {

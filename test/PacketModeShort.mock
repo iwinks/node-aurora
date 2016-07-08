@@ -1,0 +1,25 @@
+# command-with-packet-mode
+---------------------------------------------------------------------------------------------------------------------------
+ªªæ[select]
+led-set 3 {sel-color:0000FF80} 0      #LEDs Blue
+
+[deselect]
+led-set 3 00000000 0                  #LEDs Off
+
+[load]
+stream-session-enable
+stream-output-enable 0x0000F847 0x04  #output all streams to file
+
+[unload]
+stream-output-disable 0xFFFFFFFF 0xFF #disable all streams
+stream-session-disable
+
+#button short press
+[event-1-1]
+led-set 3 {sel-color:0000FF80} 0      #LEDs Blue
+
+#button release
+[event-1-2]
+led-set 3 00000000 0                  #LEDs Off
+¦rÿÿ
+---------------------------------------------------------------------------------------------------------------------------
