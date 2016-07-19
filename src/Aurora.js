@@ -198,7 +198,7 @@ class Aurora extends EventEmitter {
 
                         this._processQueue();
 
-                    })
+                    });
 
                 });
 
@@ -298,15 +298,21 @@ class Aurora extends EventEmitter {
             
         }).catch (error => {
 
-            console.log(error)
-
+            console.log(error);
             console.timeEnd('command completed');
 
-            if (this.usbConnected){
-                this._processQueue();
-            }
+            this.cmdCurrent = null;
 
-            //TODO: understand why I can't just return the error directly here....
+            this._serial.flush(() => {
+
+                AuroraResponseSerialParser.reset();
+
+                if (this.usbConnected){
+                    this._processQueue();
+                }
+
+            });
+
             return Promise.reject(error);
         });
 
@@ -318,7 +324,7 @@ class Aurora extends EventEmitter {
 
         if (this.cmdCurrent) {
             this.cmdCurrent.triggerError(-1, "Lost connection to Aurora.");
-            this.cmdCurrent = false;
+            this.cmdCurrent = null ;
         }
 
         this._serial.removeAllListeners();

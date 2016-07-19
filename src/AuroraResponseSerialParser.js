@@ -1,7 +1,17 @@
 import EventEmitter from 'events';
 import AuroraConstants from './AuroraConstants';
+import moment from 'moment';
 
 class AuroraResponseSerialParser extends EventEmitter {
+
+    static logTypesToEvents = {
+
+        INFO: 'responseLogInfo',
+        WARN: 'responseLogWarning',
+        ERRO: 'responseLogError',
+        DATA: 'responseLogData',
+        EVNT: 'responseLogEvent'
+    };
 
     constructor() {
 
@@ -15,7 +25,7 @@ class AuroraResponseSerialParser extends EventEmitter {
         this.unparsedBuffer = null;
         this.responseState = AuroraConstants.ResponseStates.NO_COMMAND;
     }
-git 
+
     parseChunk(chunk) {
 
         //don't do anything if chunk is empty
@@ -62,7 +72,8 @@ git
 
                         if (cmdPromptIndex) {
 
-                            this.emit('response', bufferLine.slice(0, cmdPromptIndex));
+                            this._parseNonCommandResponseLine(bufferLine.slice(0, cmdPromptIndex));
+
                             bufferLine = bufferLine.slice(cmdPromptIndex);
                         }
 
@@ -70,7 +81,7 @@ git
                     }
                     else {
 
-                        this.emit('response', bufferLine);
+                        this._parseNonCommandResponseLine(bufferLine);
                     }
                 }
                 else if (bufferLine.indexOf(AuroraConstants.COMMAND_DIVIDER_SUCCESS_STRING) === 0) {
@@ -189,6 +200,44 @@ git
                 }
             }
         }
+    }
+
+    _parseNonCommandResponseLine = (line) => {
+
+        if (line.charAt(0) == '<'){
+
+            const logParts = line.match(/\< (WARN|ERRO|INFO|DATA|EVNT) \| (\d{2}:\d{2}:\d{2}\.\d{3}) > (.+)/i);
+
+            if (logParts && logParts.length == 4){
+
+                const logDate = moment(logParts[2], "HH:mm:ss.SSS", true).toDate();
+
+                this.emit(AuroraResponseSerialParser.logTypesToEvents[logParts[1].toUpperCase()], logParts[3], logDate);
+                return;
+            }
+        }
+        else if (line.slice(0, 6) == 'event-'){
+
+            const eventParts = line.match(/event-(\d{1,2}): (\d+)/i);
+
+            if (eventParts && eventParts.length == 3){
+
+                this.emit('responseEvent', +eventParts[1], +eventParts[2]);
+                return;
+            }
+        }
+        else {
+
+            const dataParts = line.split(': ');
+
+            if (dataParts.length == 2) {
+
+                this.emit('responseData', dataParts[0], dataParts[1].split(',').map(Number));
+                return;
+            }
+        }
+
+        this.emit('responseUnknown', line);
     }
 }
 

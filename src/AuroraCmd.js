@@ -18,7 +18,7 @@ export default class AuroraCmd {
     static defaultOptions = {
 
         packetMode: false,                              //commands that return a lot of data can use this mode
-        respWatchdogTimeout: 1000,                      //how long the command has to finish before timing out
+        respWatchdogTimeout: 3000,                      //how long the command has to finish before timing out
         respTypeSuccess: AuroraCmd.RespTypes.ARRAY,     //by default, success response returns array of lines
         respTypeError: AuroraCmd.RespTypes.OBJECT,      //and error returns object { error: #, message: "" }
         respTypeSuccessOptions: {},
@@ -34,9 +34,6 @@ export default class AuroraCmd {
 
         this._reject = function () {};
         this._fulfill = function () {};
-
-        //used to indicate whether response piped to respOutputStream is an error response
-        this.error = false;
     }
 
     //called when a command is added to the processing queue
@@ -117,13 +114,12 @@ export default class AuroraCmd {
         this._setupRespSuccess();
         this._setupRespError();
 
-        this.error = false;
+        this.respSuccessStreamBack.on('data', this._onRespSuccessData);
+        this.respErrorStreamBack.on('data', this._onRespErrorData);
 
-        this.respSuccessStreamBack.on('data', this._onRespSuccessData.bind(this));
-        this.respErrorStreamBack.on('data', this._onRespErrorData.bind(this));
 
-        this.respSuccessStreamBack.on('finish', this._commandResponse.bind(this));
-        this.respErrorStreamBack.on('finish', this._commandResponse.bind(this));
+        this.respSuccessStreamBack.on('finish', this._onSuccess);
+        this.respErrorStreamBack.on('finish', this._onError);
 
         //write command string to input stream,
         Aurora._serial.write(this.toString() + '\n');
@@ -144,25 +140,13 @@ export default class AuroraCmd {
             }, this.options.respWatchdogTimeout);
         }
     }
-    
-    fail() {
-        
-    }
-    
-    succeed() {
-        
-    }
 
     triggerError(errorCode, errorMessage){
 
-        this.error = true;
         this.respTypeError = AuroraCmd.RespTypes.OBJECT;
         this.respError = { error: errorCode, message: errorMessage};
-        
 
-        if (this.respErrorStreamFront){
-            this.respErrorStreamFront.end();
-        }
+        this.respErrorStreamFront.end();
     }
 
     //process response
@@ -203,7 +187,7 @@ export default class AuroraCmd {
         }
     }
 
-    _commandResponse(){
+    _onError(){
 
         clearTimeout(this.respTimer);
 
@@ -212,12 +196,19 @@ export default class AuroraCmd {
         this.respSuccessStreamBack.removeAllListeners();
         this.respErrorStreamBack.removeAllListeners();
 
-        if (this.error) {
-            this._reject(this.respError);
-        }
-        else {
-            this._fulfill(this.respSuccess);
-        }
+        this._reject(this.respError);
+    }
+
+    _onSuccess(){
+
+        clearTimeout(this.respTimer);
+
+        this.respSuccessStreamFront.removeAllListeners();
+        this.respErrorStreamFront.removeAllListeners();
+        this.respSuccessStreamBack.removeAllListeners();
+        this.respErrorStreamBack.removeAllListeners();
+
+        this._fulfill(this.respSuccess);
     }
 
     toString() {
