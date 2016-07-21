@@ -20,14 +20,18 @@ export default class AuroraCmdTransformLines extends Stream.Transform {
         }
 
         let lines = respChunk.split("\n");
-
+        
         this._leftoverData = lines.pop();
 
         lines = lines.map(line => {
             return line.trim();
         });
 
-        this.push(_.compact(lines));
+        lines = _.compact(lines);
+
+        if (lines.length){
+            this.push(_.compact(lines));
+        }
 
         done();
     }

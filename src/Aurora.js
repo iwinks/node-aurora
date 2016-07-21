@@ -14,6 +14,8 @@ import AuroraCmdSessionInfo from './AuroraCmdSessionInfo';
 import AuroraCmdSyncTime from './AuroraCmdSyncTime';
 import AuroraCmdWriteFile from './AuroraCmdWriteFile';
 import AuroraCmdUnloadProfile from './AuroraCmdUnloadProfile';
+import AuroraCmdEnableEventOutput from './AuroraCmdEnableEventOutput';
+import AuroraCmdDisableEventOutput from './AuroraCmdDisableEventOutput';
 import AuroraConstants from './AuroraConstants';
 import AuroraResponseSerialParser from './AuroraResponseSerialParser';
 import EventEmitter from 'events';
@@ -59,6 +61,10 @@ class Aurora extends EventEmitter {
         AuroraResponseSerialParser.on('commandEnd', this._onCommandEnd);
         AuroraResponseSerialParser.on('responseSuccess', this._onResponseSuccess);
         AuroraResponseSerialParser.on('responseError', this._onResponseError);
+        AuroraResponseSerialParser.on('responseEvent', (eventId, eventFlags) => this.emit('event', eventId, eventFlags));
+        AuroraResponseSerialParser.on('responseLog', (type, message, date) => this.emit('log', type, message, date));
+        AuroraResponseSerialParser.on('responseData', (type, data) => this.emit('data', type, data));
+        
 
         usbDetect.on('add:' + parseInt(AuroraConstants.AURORA_USB_VID), (device) => { console.log('usb detected', device); this.emit('usbConnect', device);});
         usbDetect.on('remove:' + parseInt(AuroraConstants.AURORA_USB_VID), (device) => this.emit('usbDisconnect', device));
@@ -426,19 +432,21 @@ class Aurora extends EventEmitter {
 
 const AuroraCommands = {
 
-    'copyFile'     : AuroraCmdCopyFile,
-    'readFile'     : AuroraCmdReadFile,
-    'deleteDir'    : AuroraCmdDeleteDir,
-    'deleteFile'   : AuroraCmdDeleteFile,
-    'downloadFile' : AuroraCmdDownloadFile,
-    'flash'        : AuroraCmdFlash,
-    'getProfiles'  : AuroraCmdGetProfiles,
-    'osInfo'       : AuroraCmdOsInfo,
-    'readDir'      : AuroraCmdReadDir,
-    'sessionInfo'  : AuroraCmdSessionInfo,
-    'syncTime'     : AuroraCmdSyncTime,
-    'writeFile'    : AuroraCmdWriteFile,
-    'unloadProfile': AuroraCmdUnloadProfile
+    'copyFile'          : AuroraCmdCopyFile,
+    'readFile'          : AuroraCmdReadFile,
+    'deleteDir'         : AuroraCmdDeleteDir,
+    'deleteFile'        : AuroraCmdDeleteFile,
+    'downloadFile'      : AuroraCmdDownloadFile,
+    'flash'             : AuroraCmdFlash,
+    'getProfiles'       : AuroraCmdGetProfiles,
+    'osInfo'            : AuroraCmdOsInfo,
+    'readDir'           : AuroraCmdReadDir,
+    'sessionInfo'       : AuroraCmdSessionInfo,
+    'syncTime'          : AuroraCmdSyncTime,
+    'writeFile'         : AuroraCmdWriteFile,
+    'unloadProfile'     : AuroraCmdUnloadProfile,
+    'enableEventOutput' : AuroraCmdEnableEventOutput,
+    'disableEventOutput': AuroraCmdDisableEventOutput
 };
 
 
@@ -463,10 +471,17 @@ let decorateWithCommands = function(auroraClass){
 
 export default decorateWithCommands(new Aurora());
 
-export { Aurora, AuroraCmd, AuroraCmdCopyFile, AuroraCmdReadDir, AuroraCmdReadFile,
-         AuroraCmdDeleteDir, AuroraCmdDeleteFile, AuroraCmdDownloadFile,
-         AuroraCmdFlash, AuroraCmdGetProfiles, AuroraCmdOsInfo, AuroraCmdReadDir,
-         AuroraCmdSessionInfo, AuroraCmdSyncTime, AuroraCmdWriteFile, AuroraCmdUnloadProfile };
+const AuroraEvents = AuroraConstants.Events;
+const AuroraEventOutputs = AuroraConstants.EventOutputs;
+const AuroraLogTypes = AuroraConstants.LogTypes;
 
+export {
+    Aurora, AuroraCmd, AuroraCmdCopyFile, AuroraCmdReadDir, AuroraCmdReadFile,
+    AuroraCmdDeleteDir, AuroraCmdDeleteFile, AuroraCmdDownloadFile,
+    AuroraCmdFlash, AuroraCmdGetProfiles, AuroraCmdOsInfo, AuroraCmdReadDir,
+    AuroraCmdSessionInfo, AuroraCmdSyncTime, AuroraCmdWriteFile, AuroraCmdUnloadProfile,
+    AuroraCmdEnableEventOutput, AuroraCmdDisableEventOutput, AuroraEvents, AuroraEventOutputs,
+    AuroraLogTypes
+};
 
 

@@ -4,20 +4,14 @@ import moment from 'moment';
 
 class AuroraResponseSerialParser extends EventEmitter {
 
-    static logTypesToEvents = {
-
-        INFO: 'responseLogInfo',
-        WARN: 'responseLogWarning',
-        ERRO: 'responseLogError',
-        DATA: 'responseLogData',
-        EVNT: 'responseLogEvent'
-    };
-
     constructor() {
 
         super();
 
         this.reset();
+
+        this._regexLog = new RegExp('\\< (' + Object.keys(AuroraConstants.LogNamesToTypes).join('|') + ') \\| (\\d{2}:\\d{2}:\\d{2}\\.\\d{3}) \\> (.+)');
+        this._regexEvent = new RegExp('event-(\\d{1,2}): (\\d+)');
     }
 
     reset() {
@@ -206,19 +200,20 @@ class AuroraResponseSerialParser extends EventEmitter {
 
         if (line.charAt(0) == '<'){
 
-            const logParts = line.match(/\< (WARN|ERRO|INFO|DATA|EVNT) \| (\d{2}:\d{2}:\d{2}\.\d{3}) > (.+)/i);
+            const logParts = line.match(this._regexLog);
 
             if (logParts && logParts.length == 4){
 
                 const logDate = moment(logParts[2], "HH:mm:ss.SSS", true).toDate();
 
-                this.emit(AuroraResponseSerialParser.logTypesToEvents[logParts[1].toUpperCase()], logParts[3], logDate);
+                this.emit('responseLog', AuroraConstants.LogNamesToTypes[logParts[1].toUpperCase()], logParts[3], logDate);
+                
                 return;
             }
         }
         else if (line.slice(0, 6) == 'event-'){
 
-            const eventParts = line.match(/event-(\d{1,2}): (\d+)/i);
+            const eventParts = line.match(this._regexEvent);
 
             if (eventParts && eventParts.length == 3){
 

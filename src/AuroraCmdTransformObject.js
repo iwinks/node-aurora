@@ -67,10 +67,12 @@ export default class AuroraCmdTransformObject extends Stream.Transform {
             object[key] = key_value.join(':').trim();
 
             if (this.options.parseTypes) {
-                
-                if (!isNaN(object[key])) {
+
+                const valWithoutNumericSymbols = object[key].replace(/[$%,]+/g,'');
+
+                if (!isNaN(valWithoutNumericSymbols)) {
                     
-                    object[key] = +object[key];
+                    object[key] = +valWithoutNumericSymbols;
                 }
                 else {
 

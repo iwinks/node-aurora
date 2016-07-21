@@ -58,3 +58,58 @@ const DataTypes = {
 };
 
 module.exports.DataTypes = DataTypes;
+
+const Events = {
+
+    EVENT_MONITOR: 0,
+    BUTTON_MONITOR: 1,
+    SDCARD_MONITOR: 2,
+    BATTERY_MONITOR: 3,
+    CLOCK_MONITOR: 4,
+    CLOCK_TIMER_FIRE: 5,
+    CLOCK_TIMER_COMPLETE: 6,
+    CLOCK_ALARM_FIRE: 7,
+    USB_MONITOR: 8,
+    STREAM_BUFFER_FULL: 9,
+    STREAM_BUFFER_OVERFLOW: 10,
+    STREAM_BUFFER_PROCESSED: 11,
+    ALGO_DB_READY: 12,
+    ALGO_START: 13,
+    ALGO_COMPLETE: 14,
+    SLEEP_STAGE_MONITOR: 15
+};
+
+module.exports.Events = Events;
+
+const EventOutputs = {
+
+    USB: 1,
+    LOG: 2,
+    SESSION_FILE: 4,
+    PROFILE: 8,
+    BLUETOOTH: 16
+};
+
+module.exports.EventOutputs = EventOutputs;
+
+const LogTypes = {
+
+    DATA: 0,
+    INFO: 1,
+    EVENT: 2,
+    WARNING: 3,
+    ERROR: 4
+};
+
+module.exports.LogTypes = LogTypes;
+
+const LogNamesToTypes = {
+
+    DATA: LogTypes.DATA,
+    INFO: LogTypes.INFO,
+    EVNT: LogTypes.EVENT,
+    WARN: LogTypes.WARNING,
+    ERRO: LogTypes.ERROR
+};
+
+module.exports.LogNamesToTypes = LogNamesToTypes;

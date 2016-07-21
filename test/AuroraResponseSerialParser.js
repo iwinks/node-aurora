@@ -3,6 +3,15 @@ import fs from 'fs';
 import sinon from 'sinon';
 
 import AuroraResponseSerialParser from '../lib/AuroraResponseSerialParser';
+import AuroraConstants from '../lib/AuroraConstants';
+
+const oneOfMatcher = (array) => {
+
+    return sinon.match((el) => {
+
+        return array.indexOf(el) != -1;
+    });
+};
 
 const bufferMatcher = (string) => {
 
@@ -13,24 +22,31 @@ const bufferMatcher = (string) => {
     }));
 };
 
-const timeMatcher = (msAfterMidnight) => {
-
-  return sinon.match.instanceOf(Date).and(sinon.match((value) => {
-
-      const today = new Date();
-      today.setHours(0,0,0,0);
-
-      return value.getTime() == (today.getTime() + msAfterMidnight);
-
-  }));
-
-};
-
 const eventMatcher = (args, multiplier) => {
 
     return sinon.match.number.and(sinon.match((callIndex) => {
 
         return args[callIndex][0]*multiplier == args[callIndex][1];
+
+    }));
+};
+
+const logMatcher = (args) => {
+
+    return sinon.match.string.and(sinon.match((paramString) => {
+
+        const params = paramString.split('-');
+
+        if (params.length != 3) return false;
+
+        const today = new Date();
+        today.setHours(0,0,0,0);
+
+        const callIndex = parseInt(params[0]);
+
+        if (AuroraConstants.LogNamesToTypes[params[1]] != args[callIndex][0]) return false;
+
+        return args[callIndex][2].getTime() == (today.getTime() + parseInt(params[2]));
 
     }));
 };
@@ -46,7 +62,7 @@ const dataMatcher = () => {
         if (array.length === 1) {
             return true;
         }
-        
+
         for (let i = 1; i < array.length; i++){
 
             if (array[i-1] != array[i] - 1) return false;
@@ -252,18 +268,12 @@ test('Testing log response...', (t) => {
     
     const serialStream = fs.createReadStream('./test/ResponseLog.mock', {highWaterMark: 100000});
     
-    const logInfoSpy = sinon.spy();
-    const logWarningSpy = sinon.spy();
-    const logErrorSpy = sinon.spy();
-    const logDataSpy = sinon.spy();
-    const logEventSpy = sinon.spy();
+    const logSpy = sinon.spy();
     const responseUnknownSpy = sinon.spy();
-    
-    AuroraResponseSerialParser.on('responseLogInfo', logInfoSpy);
-    AuroraResponseSerialParser.on('responseLogWarning', logWarningSpy);
-    AuroraResponseSerialParser.on('responseLogError', logErrorSpy);
-    AuroraResponseSerialParser.on('responseLogData', logDataSpy);
-    AuroraResponseSerialParser.on('responseLogEvent', logEventSpy);
+
+    const logTypeIds = Object.keys(AuroraConstants.LogNamesToTypes).map((k) => { return AuroraConstants.LogNamesToTypes[k]; });
+
+    AuroraResponseSerialParser.on('responseLog', logSpy);
     AuroraResponseSerialParser.on('responseUnknown', responseUnknownSpy);
     
     serialStream.on('data', (responseBuffer) => {
@@ -271,22 +281,10 @@ test('Testing log response...', (t) => {
     });
     
     serialStream.on('end', () => {
-    
-    
-        t.assert(logWarningSpy.calledOnce, "'responseLogWarning' event fired once.");
-        t.assert(logWarningSpy.alwaysCalledWithExactly("warning", timeMatcher(0)), "'responseLogWarning' event received correct arguments.");
 
-        t.assert(logInfoSpy.calledOnce, "'responseLogInfo' event fired once.");
-        t.assert(logInfoSpy.alwaysCalledWithExactly("info", timeMatcher(2)), "'responseLogInfo' event received correct arguments.");
+        t.assert(logSpy.callCount == 5, "'responseLog' event fired 5 times.");
 
-        t.assert(logDataSpy.calledOnce, "'responseLogData' event fired once.");
-        t.assert(logDataSpy.alwaysCalledWithExactly("data", timeMatcher(2000)), "'responseLogData' event received correct arguments.");
-
-        t.assert(logEventSpy.calledOnce, "'responseLogEvent' event fired once.");
-        t.assert(logEventSpy.alwaysCalledWithExactly("event", timeMatcher(120000)), "'responseLogEvent' event received correct arguments.");
-
-        t.assert(logErrorSpy.calledOnce, "'responseLogError' event fired once.");
-        t.assert(logErrorSpy.alwaysCalledWithExactly("error", timeMatcher(7200000)), "'responseLogError' event received correct arguments.");
+        t.assert(logSpy.alwaysCalledWithExactly(oneOfMatcher(logTypeIds), logMatcher(logSpy.args), sinon.match.date), "'responseLog' event received correct arguments.");
         
         t.assert(!responseUnknownSpy.called, "'responseUnknown' event not fired.");
         

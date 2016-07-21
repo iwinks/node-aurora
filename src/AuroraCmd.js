@@ -149,8 +149,21 @@ export default class AuroraCmd {
         this.respErrorStreamFront.end();
     }
 
+    toString() {
+
+        let cmdStr = this.cmd;
+        if (this.args) {
+
+            for (var i = 0; i < this.args.length; i++) {
+                cmdStr += ' ' + (typeof this.args[i] == 'boolean' ? +this.args[i] : this.args[i].toString());
+            }
+        }
+        return cmdStr;
+    }
+
+
     //process response
-    _onRespSuccessData(data) {
+    _onRespSuccessData = (data) => {
 
         switch (this.options.respTypeSuccess){
 
@@ -167,9 +180,9 @@ export default class AuroraCmd {
                 this.respSuccess += data.toString();
         }
 
-    }
+    };
 
-    _onRespErrorData(data) {
+    _onRespErrorData = (data) => {
 
         switch (this.options.respTypeError){
 
@@ -185,40 +198,43 @@ export default class AuroraCmd {
             default:
                 this.respError += data.toString();
         }
-    }
+    };
 
-    _onError(){
+    _onError = () =>{
 
         clearTimeout(this.respTimer);
 
-        this.respSuccessStreamFront.removeAllListeners();
-        this.respErrorStreamFront.removeAllListeners();
-        this.respSuccessStreamBack.removeAllListeners();
-        this.respErrorStreamBack.removeAllListeners();
+        this._destroyResponseStreams();
 
         this._reject(this.respError);
-    }
+    };
 
-    _onSuccess(){
+    _onSuccess = () => {
 
         clearTimeout(this.respTimer);
 
-        this.respSuccessStreamFront.removeAllListeners();
-        this.respErrorStreamFront.removeAllListeners();
-        this.respSuccessStreamBack.removeAllListeners();
-        this.respErrorStreamBack.removeAllListeners();
+        this._destroyResponseStreams();
 
         this._fulfill(this.respSuccess);
-    }
+    };
 
-    toString() {
-        let cmdStr = this.cmd;
-        if (this.args) {
+    _destroyResponseStreams = () => {
 
-            for (var i = 0; i < this.args.length; i++) {
-                cmdStr += ' ' + (typeof this.args[i] == 'boolean' ? +this.args[i] : this.args[i].toString());
-            }
+        if (this.respSuccessStreamBack) {
+
+            this.respSuccessStreamBack.removeListener('data', this._onRespSuccessData);
+            this.respSuccessStreamBack.removeListener('finish', this._onSuccess);
+            this.respSuccessStreamBack = null;
         }
-        return cmdStr;
-    }
+
+        if (this.respErrorStreamBack) {
+
+            this.respErrorStreamBack.removeListener('data', this._onRespErrorData);
+            this.respErrorStreamBack.removeListener('finish', this._onError);
+            this.respErrorStreamBack = null;
+        }
+
+        this.respSuccessStreamFront = null;
+        this.respErrorStreamFront = null;
+    };
 }
