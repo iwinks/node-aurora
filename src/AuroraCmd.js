@@ -114,12 +114,12 @@ export default class AuroraCmd {
         this._setupRespSuccess();
         this._setupRespError();
 
-        this.respSuccessStreamBack.on('data', this._onRespSuccessData);
-        this.respErrorStreamBack.on('data', this._onRespErrorData);
+        this.respSuccessStreamBack.on('data', this.onRespSuccessData.bind(this));
+        this.respErrorStreamBack.on('data', this.onRespErrorData.bind(this));
 
 
-        this.respSuccessStreamBack.on('finish', this._onSuccess);
-        this.respErrorStreamBack.on('finish', this._onError);
+        this.respSuccessStreamBack.on('finish', this.onSuccess.bind(this));
+        this.respErrorStreamBack.on('finish', this.onError.bind(this));
 
         //write command string to input stream,
         Aurora._serial.write(this.toString() + '\n');
@@ -163,7 +163,7 @@ export default class AuroraCmd {
 
 
     //process response
-    _onRespSuccessData = (data) => {
+    onRespSuccessData(data){
 
         switch (this.options.respTypeSuccess){
 
@@ -180,9 +180,9 @@ export default class AuroraCmd {
                 this.respSuccess += data.toString();
         }
 
-    };
+    }
 
-    _onRespErrorData = (data) => {
+    onRespErrorData(data){
 
         switch (this.options.respTypeError){
 
@@ -198,18 +198,18 @@ export default class AuroraCmd {
             default:
                 this.respError += data.toString();
         }
-    };
+    }
 
-    _onError = () =>{
+    onError(){
 
         clearTimeout(this.respTimer);
 
         this._destroyResponseStreams();
 
         this._reject(this.respError);
-    };
+    }
 
-    _onSuccess = () => {
+    onSuccess(){
 
         clearTimeout(this.respTimer);
 
@@ -218,23 +218,23 @@ export default class AuroraCmd {
         this._fulfill(this.respSuccess);
     };
 
-    _destroyResponseStreams = () => {
+    _destroyResponseStreams(){
 
         if (this.respSuccessStreamBack) {
 
-            this.respSuccessStreamBack.removeListener('data', this._onRespSuccessData);
-            this.respSuccessStreamBack.removeListener('finish', this._onSuccess);
+            this.respSuccessStreamBack.removeListener('data', this.onRespSuccessData);
+            this.respSuccessStreamBack.removeListener('finish', this.onSuccess);
             this.respSuccessStreamBack = null;
         }
 
         if (this.respErrorStreamBack) {
 
-            this.respErrorStreamBack.removeListener('data', this._onRespErrorData);
-            this.respErrorStreamBack.removeListener('finish', this._onError);
+            this.respErrorStreamBack.removeListener('data', this.onRespErrorData);
+            this.respErrorStreamBack.removeListener('finish', this.onError);
             this.respErrorStreamBack = null;
         }
 
         this.respSuccessStreamFront = null;
         this.respErrorStreamFront = null;
-    };
+    }
 }

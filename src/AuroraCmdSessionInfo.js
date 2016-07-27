@@ -24,7 +24,7 @@ export default class AuroraCmdSessionInfo extends AuroraCmdReadFile {
         super(srcPath, _.defaultsDeep(options, AuroraCmdSessionInfo.defaultOptions));
     }
 
-    _commandResponse() {
+    onSuccess() {
 
         this.respSuccess = _.defaultsDeep(this.respSuccess, AuroraCmdSessionInfo.defaultInfo);
 
@@ -98,8 +98,6 @@ export default class AuroraCmdSessionInfo extends AuroraCmdReadFile {
                     totalSleepDuration += currentStageDuration;
                 }
 
-
-
             });
 
             //is there any time left over?
@@ -117,7 +115,7 @@ export default class AuroraCmdSessionInfo extends AuroraCmdReadFile {
             this.respSuccess.sleepOnset = this.respSuccess.duration;
         }
 
-        super._commandResponse();
+        super.onSuccess();
     }
 
 }

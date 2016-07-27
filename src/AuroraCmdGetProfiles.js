@@ -15,7 +15,7 @@ export default class AuroraCmdGetProfiles extends AuroraCmdReadFile {
         super('profiles/_profiles.list', _.defaultsDeep(options, AuroraCmdGetProfiles.defaultOptions));
     }
 
-    _onRespSuccessData = (profileLine) => {
+    onRespSuccessData(profileLine){
         
         let p = profileLine.split(':');
         let profile = {
@@ -26,7 +26,6 @@ export default class AuroraCmdGetProfiles extends AuroraCmdReadFile {
         };
 
         this.respSuccess = this.respSuccess.concat(profile);
-
-    };
+    }
 
 }

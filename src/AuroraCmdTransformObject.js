@@ -1,6 +1,7 @@
 import Stream from "stream";
 import Flat from "flat";
 import moment from 'moment';
+import _ from 'lodash';
 
 export default class AuroraCmdTransformObject extends Stream.Transform {
     

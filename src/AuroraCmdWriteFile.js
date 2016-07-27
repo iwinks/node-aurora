@@ -1,6 +1,7 @@
 import Aurora from "./Aurora";
 import AuroraCmd from "./AuroraCmd";
 import Stream from 'stream';
+import _ from 'lodash';
 
 export default class AuroraCmdWriteFile extends AuroraCmd {
 
