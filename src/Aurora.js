@@ -16,6 +16,7 @@ import AuroraCmdWriteFile from './AuroraCmdWriteFile';
 import AuroraCmdUnloadProfile from './AuroraCmdUnloadProfile';
 import AuroraCmdEnableEventOutput from './AuroraCmdEnableEventOutput';
 import AuroraCmdDisableEventOutput from './AuroraCmdDisableEventOutput';
+import AuroraCmdLedSet from './AuroraCmdLedSet';
 import AuroraConstants from './AuroraConstants';
 import AuroraResponseSerialParser from './AuroraResponseSerialParser';
 import EventEmitter from 'events';
@@ -66,7 +67,7 @@ class Aurora extends EventEmitter {
         AuroraResponseSerialParser.on('responseData', (type, data) => this.emit('data', type, data));
         
 
-        usbDetect.on('add:' + parseInt(AuroraConstants.AURORA_USB_VID), (device) => { console.log('usb detected', device); this.emit('usbConnect', device);});
+        usbDetect.on('add:' + parseInt(AuroraConstants.AURORA_USB_VID), (device) => this.emit('usbConnect', device));
         usbDetect.on('remove:' + parseInt(AuroraConstants.AURORA_USB_VID), (device) => this.emit('usbDisconnect', device));
     }
 
@@ -118,8 +119,6 @@ class Aurora extends EventEmitter {
 
                 let serialPort = serialPorts.pop();
 
-                console.log('try connect', serialPort);
-
                 this._serial = new SerialPort(serialPort, this.options.serialOptions);
 
                 this._serial.once('close', () => {
@@ -142,14 +141,10 @@ class Aurora extends EventEmitter {
 
                 this._serial.open(error => {
                     
-                    console.log('serial open', error);
-                    
                     const handleError = (error) => {
 
                         this._serial.removeAllListeners();
-                        
-                        console.log('connection error', error);
-                        
+
                         if (!serialPorts.length) {
 
                             this.usbConnecting = false;
@@ -215,16 +210,12 @@ class Aurora extends EventEmitter {
                 SerialPort.list( (error, ports) => {
 
                     if (error) {
-                        console.log('serial error', error);
+
                         return reject(error);
                     }
-
-                    console.log('ports', ports);
-
+                    
                     let serialPorts = [];
-
-                    //console.log(ports);
-
+                    
                     ports.forEach(function (port) {
 
                         //TODO: remove these extra conditions when old beta
@@ -295,9 +286,6 @@ class Aurora extends EventEmitter {
         //when the command has finished executing
         return cmd.queue().then( resp => {
 
-            console.log(resp);
-
-            console.timeEnd('command completed');
             this._processQueue();
 
             return resp;
@@ -305,7 +293,6 @@ class Aurora extends EventEmitter {
         }).catch (error => {
 
             console.log(error);
-            console.timeEnd('command completed');
 
             this.cmdCurrent = null;
 
@@ -353,7 +340,6 @@ class Aurora extends EventEmitter {
         this.cmdCurrent.exec();
 
         console.log('Executing: ' + this.cmdCurrent.toString());
-        console.time('command completed');
     }
 
 
@@ -446,7 +432,8 @@ const AuroraCommands = {
     'writeFile'         : AuroraCmdWriteFile,
     'unloadProfile'     : AuroraCmdUnloadProfile,
     'enableEventOutput' : AuroraCmdEnableEventOutput,
-    'disableEventOutput': AuroraCmdDisableEventOutput
+    'disableEventOutput': AuroraCmdDisableEventOutput,
+    'ledSet'            : AuroraCmdLedSet
 };
 
 
@@ -480,8 +467,8 @@ export {
     AuroraCmdDeleteDir, AuroraCmdDeleteFile, AuroraCmdDownloadFile,
     AuroraCmdFlash, AuroraCmdGetProfiles, AuroraCmdOsInfo, AuroraCmdReadDir,
     AuroraCmdSessionInfo, AuroraCmdSyncTime, AuroraCmdWriteFile, AuroraCmdUnloadProfile,
-    AuroraCmdEnableEventOutput, AuroraCmdDisableEventOutput, AuroraEvents, AuroraEventOutputs,
-    AuroraLogTypes
+    AuroraCmdEnableEventOutput, AuroraCmdDisableEventOutput, AuroraCmdLedSet,
+    AuroraEvents, AuroraEventOutputs, AuroraLogTypes
 };
 
 

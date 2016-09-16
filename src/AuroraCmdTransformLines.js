@@ -40,7 +40,6 @@ export default class AuroraCmdTransformLines extends Stream.Transform {
         
         this._leftoverData = this._leftoverData.trim();
         if (this._leftoverData) {
-            console.log(this._leftoverData);
             this.push(this._leftoverData);
             this._leftoverData = null;
         }

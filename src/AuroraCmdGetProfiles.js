@@ -15,17 +15,24 @@ export default class AuroraCmdGetProfiles extends AuroraCmdReadFile {
         super('profiles/_profiles.list', _.defaultsDeep(options, AuroraCmdGetProfiles.defaultOptions));
     }
 
-    onRespSuccessData(profileLine){
-        
-        let p = profileLine.split(':');
-        let profile = {
-            file: p[0],
-            path: 'profiles/' + p[0],
-            name: p[0].substr(0, p[0].lastIndexOf('.')),
-            id: p.length > 1 ? p[1] : _.uniqueId('custom_')
-        };
+    onRespSuccessData(profileLines){
 
-        this.respSuccess = this.respSuccess.concat(profile);
+        if (!Array.isArray(profileLines)){
+
+            profileLines = [profileLines];
+        }
+
+        for (let profileLine of profileLines){
+
+            let p = profileLine.split(':');
+            let profile = {
+                name: p[0],
+                id: p.length > 1 ? p[1] : _.uniqueId('custom_')
+            };
+
+            this.respSuccess = this.respSuccess.concat(profile);
+        }
+
     }
 
 }
