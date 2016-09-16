@@ -1,6 +1,7 @@
 import _ from 'lodash';
 import AuroraCmd from "./AuroraCmd";
 import AuroraCmdReadFile from "./AuroraCmdReadFile";
+import moment from 'moment';
 
 export default class AuroraCmdSessionInfo extends AuroraCmdReadFile {
 
