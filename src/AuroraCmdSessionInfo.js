@@ -20,7 +20,7 @@ export default class AuroraCmdSessionInfo extends AuroraCmdReadFile {
         super.onSuccess();
     }
 
-    static processSession(sessionObj){
+    static processSession = (sessionObj) => {
 
         const session = {
             firmware_version: null,
@@ -162,6 +162,6 @@ export default class AuroraCmdSessionInfo extends AuroraCmdReadFile {
         session.sleep_score = Math.floor((session.deep_duration + session.rem_duration) / session.sleep_duration * 200);
 
         return { session, streams, events};
-    }
+    };
 
 }

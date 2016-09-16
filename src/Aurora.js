@@ -471,4 +471,8 @@ export {
     AuroraEvents, AuroraEventOutputs, AuroraLogTypes
 };
 
+export AuroraCmdTransformBinary from './AuroraCmdTransformBinary';
+export AuroraCmdTransformLines from './AuroraCmdTransformLines';
+export AuroraCmdTransformObject from './AuroraCmdTransformObject';
+
 
