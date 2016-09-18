@@ -1,6 +1,7 @@
 import _ from 'lodash';
 import AuroraCmd from "./AuroraCmd";
 import AuroraCmdReadFile from "./AuroraCmdReadFile";
+import {SleepStages, Events} from './AuroraConstants';
 import moment from 'moment';
 
 export default class AuroraCmdSessionInfo extends AuroraCmdReadFile {
@@ -48,10 +49,8 @@ export default class AuroraCmdSessionInfo extends AuroraCmdReadFile {
         let firstSignalStageTime = 0;
         let currentStage = 0;
         let currentStageTime = 0;
-        let lastAwakeningTime = 0;
 
-
-        const stageDurations = [0, 0, 0, 0, 0];
+        const stageDurations = new Array(Object.keys(SleepStages).length).fill(0);
 
         if (sessionObj.date && sessionObj.duration){
 
@@ -80,6 +79,8 @@ export default class AuroraCmdSessionInfo extends AuroraCmdReadFile {
 
                 for (let [eventId, eventObject] of Object.entries(val)){
 
+                    eventId = parseInt(eventId);
+
                     for (const event of Object.values(eventObject)){
 
                         const newEvent = {
@@ -97,11 +98,11 @@ export default class AuroraCmdSessionInfo extends AuroraCmdReadFile {
                         }
 
                         //sleep events
-                        if (eventId == '15'){
+                        if (eventId == Events.SLEEP_TRACKER_MONITOR){
 
-                            const stage =  Math.log2(newEvent.flags & 0x000000FF);
+                            const stage = newEvent.flags;
 
-                            if (!firstSignalStageTime && stage > 0){
+                            if (!firstSignalStageTime && stage > SleepStages.UNKNOWN){
 
                                 firstSignalStageTime = newEvent.time;
                             }
@@ -112,7 +113,7 @@ export default class AuroraCmdSessionInfo extends AuroraCmdReadFile {
                             }
 
                             //is this a non-awake stage?
-                            if (stage > 1){
+                            if (stage > SleepStages.AWAKE){
 
                                 //is this the first non-awake sleep stage?
                                 if (!session.asleep_at){
@@ -120,25 +121,9 @@ export default class AuroraCmdSessionInfo extends AuroraCmdReadFile {
                                     session.asleep_at = newEvent.event_at;
                                     session.sleep_onset = newEvent.time - firstSignalStageTime;
                                 }
-                                //was the previous stage awake
-                                //and did the last awakening occur more than
-                                //5 minutes ago
-                                else if (currentStage == 1 && (newEvent.time - lastAwakeningTime) > 1000*60*5){
-
-                                    lastAwakeningTime = newEvent.time;
-
-                                    events.push({
-                                        aurora_event_id: 16,
-                                        flags: 1,
-                                        time: currentStageTime,
-                                        event_at: session.session_at + currentStageTime
-                                    });
-
-                                    session.awakenings++;
-                                }
                             }
                             //is this an awake stage and have we found the first sleep event?
-                            else if (stage == 1 && session.asleep_at){
+                            else if (stage == SleepStages.AWAKE && session.asleep_at){
 
                                 session.awake_at = newEvent.event_at;
                                 session.sleep_duration = session.awake_at - session.asleep_at;
@@ -155,11 +140,11 @@ export default class AuroraCmdSessionInfo extends AuroraCmdReadFile {
             }
         }
 
-        session.no_signal_duration = stageDurations[0];
-        session.awake_duration = stageDurations[1];
-        session.light_duration = stageDurations[2];
-        session.deep_duration = stageDurations[3];
-        session.rem_duration = stageDurations[4];
+        session.no_signal_duration = stageDurations[SleepStages.UNKNOWN];
+        session.awake_duration = stageDurations[SleepStages.AWAKE];
+        session.light_duration = stageDurations[SleepStages.LIGHT];
+        session.deep_duration = stageDurations[SleepStages.DEEP];
+        session.rem_duration = stageDurations[SleepStages.REM];
         session.sleep_score = Math.floor((session.deep_duration + session.rem_duration) / session.sleep_duration * 200);
 
         return { session, streams, events};
