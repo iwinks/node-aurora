@@ -55,8 +55,11 @@ export default class AuroraCmdSessionInfo extends AuroraCmdReadFile {
         if (sessionObj.date && sessionObj.duration){
 
             session.session_at = moment(sessionObj.date).valueOf();
-            session.firmware_version = sessionObj.version;
             session.session_duration = sessionObj.duration;
+    
+            const version = session.firmware_version.match(/(\d+).(\d+).(\d+)/);
+            
+            session.firmware_version = (parseInt(version[1]) * 10000) + (parseInt(version[2]) * 100) + parseInt(version[3]);
         }
 
         for (let [key, val] of Object.entries(sessionObj)){
@@ -70,7 +73,7 @@ export default class AuroraCmdSessionInfo extends AuroraCmdReadFile {
                         streams.push({
                             aurora_stream_id: streamId,
                             stream_duration: stream.duration,
-                            stream_at: stream.date
+                            stream_at: session.session_at + stream.time
                         });
                     }
                 }
@@ -88,14 +91,8 @@ export default class AuroraCmdSessionInfo extends AuroraCmdReadFile {
                             flags: event.flags
                         };
 
-                        if (event.date){
-                            newEvent.event_at = moment(event.date).valueOf();
-                            newEvent.time = newEvent.event_at - session.session_at;
-                        }
-                        else if (event.time){
-                            newEvent.event_at = session.session_at + event.time;
-                            newEvent.time = event.time;
-                        }
+                        newEvent.event_at = session.session_at + event.time;
+                        newEvent.time = event.time;
 
                         //sleep events
                         if (eventId == Events.SLEEP_TRACKER_MONITOR){
