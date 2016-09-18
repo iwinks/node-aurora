@@ -113,7 +113,7 @@ const Streams = {
     BATTERY: 10,
 
     SLEEP_FEATURES: 16,
-    SLEEP_STAGER: 17,
+    SLEEP_STAGES: 17,
     SLEEP_TRACKER: 18,
 
     ACCEL_MAGNITUDE: 24,
