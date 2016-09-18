@@ -133,6 +133,10 @@ export default class AuroraCmdSessionInfo extends AuroraCmdReadFile {
                             currentStage = stage;
                             currentStageTime = newEvent.time;
                         }
+                        else if (eventId == Events.AUTO_SHUTDOWN){
+
+                            session.incomplete = true;
+                        }
 
                         events.push(newEvent);
                     }
@@ -145,6 +149,8 @@ export default class AuroraCmdSessionInfo extends AuroraCmdReadFile {
         session.light_duration = stageDurations[SleepStages.LIGHT];
         session.deep_duration = stageDurations[SleepStages.DEEP];
         session.rem_duration = stageDurations[SleepStages.REM];
+
+        session.incomplete =
 
         session.sleep_score = sleep_duration ? Math.floor((session.deep_duration + session.rem_duration) / session.sleep_duration * 200): 0;
 
