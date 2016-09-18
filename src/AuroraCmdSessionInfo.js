@@ -57,9 +57,18 @@ export default class AuroraCmdSessionInfo extends AuroraCmdReadFile {
             session.session_at = moment(sessionObj.date).valueOf();
             session.session_duration = sessionObj.duration;
     
-            const version = session.firmware_version.match(/(\d+).(\d+).(\d+)/);
-            
+            const version = sessionObj.version.match(/(\d+).(\d+).(\d+)/);
+
             session.firmware_version = (parseInt(version[1]) * 10000) + (parseInt(version[2]) * 100) + parseInt(version[3]);
+
+            if (sessionObj.profile){
+                if (sessionObj.profile.name){
+                    session.aurora_profile_name = sessionObj.profile.name;
+                }
+                if (sessionObj.profile.id){
+                    session.aurora_profile_id = sessionObj.profile.id;
+                }
+            }
         }
 
         for (let [key, val] of Object.entries(sessionObj)){
