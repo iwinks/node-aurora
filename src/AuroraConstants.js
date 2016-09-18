@@ -43,7 +43,7 @@ module.exports.COMMAND_DIVIDER_ERROR_STRING = COMMAND_DIVIDER_ERROR_STRING;
 
 
 const DataTypes = {
-
+    UNKNOWN: 0,
     BOOL: 1,
     CHAR: 2,
     UINT8: 3,
@@ -61,36 +61,80 @@ module.exports.DataTypes = DataTypes;
 
 const Events = {
 
-    EVENT_MONITOR: 0,
-    BUTTON_MONITOR: 1,
-    SDCARD_MONITOR: 2,
-    BATTERY_MONITOR: 3,
-    CLOCK_MONITOR: 4,
-    CLOCK_TIMER_FIRE: 5,
-    CLOCK_TIMER_COMPLETE: 6,
-    CLOCK_ALARM_FIRE: 7,
-    USB_MONITOR: 8,
-    STREAM_BUFFER_FULL: 9,
-    STREAM_BUFFER_OVERFLOW: 10,
-    STREAM_BUFFER_PROCESSED: 11,
-    ALGO_DB_READY: 12,
-    ALGO_START: 13,
-    ALGO_COMPLETE: 14,
-    SLEEP_STAGE_MONITOR: 15
+    SIGNAL_MONITOR: 0,
+    SLEEP_TRACKER_MONITOR: 1,
+    MOVEMENT: 2,
+    STIM_PRESENTED: 3,
+
+    AWAKENING: 4,
+    AUTO_SHUTDOWN: 5,
+
+    BUTTON_MONITOR: 16,
+    SDCARD_MONITOR: 17,
+    USB_MONITOR: 18,
+    CLOCK_TIMER_FIRE: 19,
+
+    CLOCK_TIMER_COMPLETE: 20,
+    CLOCK_ALARM_FIRE: 21,
+    BATTERY_MONITOR: 22,
+
+    EVENT_MONITOR: 24,
+    STREAM_BUFFER_FULL: 25,
+    STREAM_BUFFER_OVERFLOW: 26,
+    ALGO_DB_READY: 27
 };
 
 module.exports.Events = Events;
 
 const EventOutputs = {
 
-    USB: 1,
-    LOG: 2,
-    SESSION_FILE: 4,
-    PROFILE: 8,
-    BLUETOOTH: 16
+    USB: 0,
+    LOG: 1,
+    SESSION_FILE: 2,
+    PROFILE: 3,
+    BLUETOOTH: 4
 };
 
 module.exports.EventOutputs = EventOutputs;
+
+const Streams = {
+    SIGNAL_QUALITY: 0,
+    RAW_EEG: 1,
+    HEART_RATE: 2,
+    ACCEL_X: 3,
+    ACCEL_Y: 4,
+
+    ACCEL_Z: 5,
+    GYRO_X: 6,
+    GYRO_Y: 7,
+    GYRO_Z: 8,
+
+    TEMPERATURE: 9,
+    BATTERY: 10,
+
+    SLEEP_FEATURES: 16,
+    SLEEP_STAGER: 17,
+    SLEEP_TRACKER: 18,
+
+    ACCEL_MAGNITUDE: 24,
+    GYRO_MAGNITUDE: 25,
+    ROTATION_ROLL: 26,
+    ROTATION_PITCH: 27
+};
+
+module.exports.Streams = Streams;
+
+const StreamOutputs = {
+
+    SILENT: 0,
+    FILE_CSV: 1,
+    FILE_RAW: 2,
+    CONSOLE: 3,
+    DATA_LOG: 4,
+    BLE: 5
+};
+
+module.exports.StreamOutputs = StreamOutputs;
 
 const LogTypes = {
 

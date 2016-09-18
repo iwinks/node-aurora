@@ -33,24 +33,26 @@ export default class AuroraCmdWriteFile extends AuroraCmd {
 
         super.exec();
 
-        let readStream = this.content;
-
         if (typeof this.content == 'string') {
 
-            readStream = new Stream.Readable();
-            readStream._read = function noop(){};
+            console.log('writing from string');
 
-            readStream.push(this.content);
-            readStream.push(null);
+            Aurora.write(this.content + '\r\r\r\r');
         }
+        else {
 
-        readStream.on('end', () => {
-            Aurora.write('\r\r\r\r');
-            readStream.removeAllListeners();
-        }).on('data', (data) => {
-            this.petWatchdog();
-            Aurora.write(data);
-        });
+            let readStream = this.content;
+
+            readStream.on('end', () => {
+
+                Aurora.write('\r\r\r\r');
+                readStream.removeAllListeners();
+            }).on('data', (data) => impo
+
+                this.petWatchdog();
+                Aurora.write(data);
+            });
+        }
 
     }
 

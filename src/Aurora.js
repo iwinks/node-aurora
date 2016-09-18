@@ -461,6 +461,8 @@ export default decorateWithCommands(new Aurora());
 const AuroraEvents = AuroraConstants.Events;
 const AuroraEventOutputs = AuroraConstants.EventOutputs;
 const AuroraLogTypes = AuroraConstants.LogTypes;
+const AuroraStreams = AuroraConstants.Streams;
+const AuroraStreamOutputs = AuroraConstants.StreamOutputs;
 
 export {
     Aurora, AuroraCmd, AuroraCmdCopyFile, AuroraCmdReadDir, AuroraCmdReadFile,
@@ -468,7 +470,7 @@ export {
     AuroraCmdFlash, AuroraCmdGetProfiles, AuroraCmdOsInfo, AuroraCmdReadDir,
     AuroraCmdSessionInfo, AuroraCmdSyncTime, AuroraCmdWriteFile, AuroraCmdUnloadProfile,
     AuroraCmdEnableEventOutput, AuroraCmdDisableEventOutput, AuroraCmdLedSet,
-    AuroraEvents, AuroraEventOutputs, AuroraLogTypes
+    AuroraEvents, AuroraEventOutputs, AuroraLogTypes, AuroraStreams, AuroraStreamOutputs
 };
 
 export AuroraCmdTransformBinary from './AuroraCmdTransformBinary';
