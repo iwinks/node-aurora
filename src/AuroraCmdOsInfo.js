@@ -14,31 +14,13 @@ export default class AuroraCmdOsInfo extends AuroraCmd {
 
     onSuccess(){
 
-        let versionKey = false;
+        if (this.respSuccess.version) {
 
-        //TODO: this gets removed once old firmware versions are deprecated
-        if (this.respSuccess.auroraOsVersion) {
-            versionKey = 'auroraOsVersion';
-        }
-        else if (this.respSuccess.version) {
-            versionKey = 'version';
-        }
+            let version = this.respSuccess[this.respSuccess.version].toString().match(/(\d+).(\d+).(\d+)/);
 
-        if (versionKey) {
-
-            let version = this.respSuccess[versionKey].toString().match(/(\d+).(\d+).?(\d)*/);
-
-            this.respSuccess.version = {
-                major: parseInt(version[1]),
-                minor: parseInt(version[2]),
-                build: version[3] != undefined ? parseInt(version[3]) : 0,
-            };
-
-            this.respSuccess.version.number = (this.respSuccess.version.major * 10000) + (this.respSuccess.version.minor * 100) + this.respSuccess.version.build;
-            this.respSuccess.version.string = 'v' + this.respSuccess.version.major + '.' + this.respSuccess.version.minor + '.' + this.respSuccess.version.build;
-
-            delete this.respSuccess.auroraOsVersion; //TODO: removed once old firmware versions are deprecated
-
+            this.respSuccess.versionString = 'v' + this.respSuccess.version;
+            this.respSuccess.version = (parseInt(version[1]) * 10000) + (parseInt(version[2]) * 100) + parseInt(version[3]);
+           
             super.onSuccess();
         }
         else {
