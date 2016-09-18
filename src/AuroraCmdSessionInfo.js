@@ -145,7 +145,8 @@ export default class AuroraCmdSessionInfo extends AuroraCmdReadFile {
         session.light_duration = stageDurations[SleepStages.LIGHT];
         session.deep_duration = stageDurations[SleepStages.DEEP];
         session.rem_duration = stageDurations[SleepStages.REM];
-        session.sleep_score = Math.floor((session.deep_duration + session.rem_duration) / session.sleep_duration * 200);
+
+        session.sleep_score = sleep_duration ? Math.floor((session.deep_duration + session.rem_duration) / session.sleep_duration * 200): 0;
 
         return { session, streams, events};
     };
