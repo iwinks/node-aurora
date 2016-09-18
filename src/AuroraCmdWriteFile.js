@@ -1,6 +1,5 @@
 import Aurora from "./Aurora";
 import AuroraCmd from "./AuroraCmd";
-import Stream from 'stream';
 import _ from 'lodash';
 
 export default class AuroraCmdWriteFile extends AuroraCmd {
@@ -35,8 +34,6 @@ export default class AuroraCmdWriteFile extends AuroraCmd {
 
         if (typeof this.content == 'string') {
 
-            console.log('writing from string');
-
             Aurora.write(this.content + '\r\r\r\r');
         }
         else {
@@ -47,7 +44,7 @@ export default class AuroraCmdWriteFile extends AuroraCmd {
 
                 Aurora.write('\r\r\r\r');
                 readStream.removeAllListeners();
-            }).on('data', (data) => impo
+            }).on('data', (data) => {
 
                 this.petWatchdog();
                 Aurora.write(data);
