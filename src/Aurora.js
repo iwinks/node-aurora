@@ -463,6 +463,7 @@ const AuroraEventOutputs = AuroraConstants.EventOutputs;
 const AuroraLogTypes = AuroraConstants.LogTypes;
 const AuroraStreams = AuroraConstants.Streams;
 const AuroraStreamOutputs = AuroraConstants.StreamOutputs;
+const AuroraSleepStages = AuroraConstants.SleepStages;
 
 export {
     Aurora, AuroraCmd, AuroraCmdCopyFile, AuroraCmdReadDir, AuroraCmdReadFile,
@@ -470,7 +471,8 @@ export {
     AuroraCmdFlash, AuroraCmdGetProfiles, AuroraCmdOsInfo, AuroraCmdReadDir,
     AuroraCmdSessionInfo, AuroraCmdSyncTime, AuroraCmdWriteFile, AuroraCmdUnloadProfile,
     AuroraCmdEnableEventOutput, AuroraCmdDisableEventOutput, AuroraCmdLedSet,
-    AuroraEvents, AuroraEventOutputs, AuroraLogTypes, AuroraStreams, AuroraStreamOutputs
+    AuroraEvents, AuroraEventOutputs, AuroraLogTypes, AuroraStreams, AuroraStreamOutputs,
+    AuroraSleepStages
 };
 
 export AuroraCmdTransformBinary from './AuroraCmdTransformBinary';

@@ -136,6 +136,16 @@ const StreamOutputs = {
 
 module.exports.StreamOutputs = StreamOutputs;
 
+const SleepStages = {
+  UNKNOWN: 0,
+  AWAKE: 1,
+  LIGHT: 2,
+  DEEP: 3,
+  REM: 4
+};
+
+module.exports.SleepStages = SleepStages;
+
 const LogTypes = {
 
     DATA: 0,
