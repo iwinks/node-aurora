@@ -468,7 +468,7 @@ const AuroraSleepStages = AuroraConstants.SleepStages;
 export {
     Aurora, AuroraCmd, AuroraCmdCopyFile, AuroraCmdReadDir, AuroraCmdReadFile,
     AuroraCmdDeleteDir, AuroraCmdDeleteFile, AuroraCmdDownloadFile,
-    AuroraCmdFlash, AuroraCmdGetProfiles, AuroraCmdOsInfo, AuroraCmdReadDir,
+    AuroraCmdFlash, AuroraCmdGetProfiles, AuroraCmdOsInfo,
     AuroraCmdSessionInfo, AuroraCmdSyncTime, AuroraCmdWriteFile, AuroraCmdUnloadProfile,
     AuroraCmdEnableEventOutput, AuroraCmdDisableEventOutput, AuroraCmdLedSet,
     AuroraEvents, AuroraEventOutputs, AuroraLogTypes, AuroraStreams, AuroraStreamOutputs,

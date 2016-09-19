@@ -25,8 +25,9 @@ export default class AuroraCmdSessionInfo extends AuroraCmdReadFile {
     static processSession = (sessionObj) => {
 
         const session = {
-            firmware_version: null,
-            aurora_profile_id: null,
+            firmware_version: 0,
+            aurora_profile_id: '',
+            aurora_profile_name: '',
             awakenings: 0,
             sleep_onset: 0,
             session_duration: 0,
@@ -38,9 +39,9 @@ export default class AuroraCmdSessionInfo extends AuroraCmdReadFile {
             rem_duration: 0,
             sleep_score: 0,
             incomplete: false,
-            asleep_at: null,
-            awake_at: null,
-            session_at: null
+            asleep_at: 0,
+            awake_at: 0,
+            session_at: 0
         };
 
         const streams = [];
@@ -79,9 +80,18 @@ export default class AuroraCmdSessionInfo extends AuroraCmdReadFile {
 
                     for (const stream of Object.values(streamObject)){
 
+                        if (typeof stream.duration == 'undefined' || typeof stream.time == 'undefined'){
+
+                            console.log('corrupt stream ' + streamId, stream);
+                            continue;
+                        }
+
+
                         streams.push({
                             aurora_stream_id: streamId,
-                            stream_duration: stream.duration,
+                            file: stream.file,
+                            duration: stream.duration,
+                            data_type: stream.type,
                             stream_at: session.session_at + stream.time
                         });
                     }
@@ -94,6 +104,11 @@ export default class AuroraCmdSessionInfo extends AuroraCmdReadFile {
                     eventId = parseInt(eventId);
 
                     for (const event of Object.values(eventObject)){
+
+                        if (typeof event.flags == 'undefined' ||typeof event.time == 'undefined') {
+                            console.log('corrupt event ' + eventId, event);
+                            continue;
+                        }
 
                         const newEvent = {
                             aurora_event_id: eventId,

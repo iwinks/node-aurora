@@ -14,12 +14,13 @@ export default class AuroraCmdOsInfo extends AuroraCmd {
 
     onSuccess(){
 
+        
         if (this.respSuccess.version) {
 
-            const version = this.respSuccess.version.match(/(\d+).(\d+).(\d+)/);
+            const version = this.respSuccess.version.split('.');
 
             this.respSuccess.versionString = 'v' + this.respSuccess.version;
-            this.respSuccess.version = (parseInt(version[1]) * 10000) + (parseInt(version[2]) * 100) + parseInt(version[3]);
+            this.respSuccess.version = (parseInt(version[0]) * 10000) + (parseInt(version[1]) * 100) + parseInt(version[2]);
 
             super.onSuccess();
         }
