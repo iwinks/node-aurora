@@ -147,7 +147,6 @@ export default class AuroraCmdSessionInfo extends AuroraCmdReadFile {
                             else if (stage == SleepStages.AWAKE && session.asleep_at){
 
                                 session.awake_at = newEvent.event_at;
-                                session.sleep_duration = session.awake_at - session.asleep_at;
                             }
 
                             //update current stage/time
@@ -170,6 +169,7 @@ export default class AuroraCmdSessionInfo extends AuroraCmdReadFile {
         session.light_duration = stageDurations[SleepStages.LIGHT];
         session.deep_duration = stageDurations[SleepStages.DEEP];
         session.rem_duration = stageDurations[SleepStages.REM];
+        sesssion.sleep_duration = session.light_duration + session.deep_duration + session.rem_duration;
 
         session.sleep_score = session.sleep_duration ? Math.floor((session.deep_duration + session.rem_duration) / session.sleep_duration * 200): 0;
 
