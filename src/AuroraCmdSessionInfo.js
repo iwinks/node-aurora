@@ -157,6 +157,10 @@ export default class AuroraCmdSessionInfo extends AuroraCmdReadFile {
 
                             session.incomplete = true;
                         }
+                        else if (eventId == Events.AWAKENING){
+                            
+                            session.awakenings++;
+                        }
 
                         events.push(newEvent);
                     }
