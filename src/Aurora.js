@@ -12,11 +12,15 @@ import AuroraCmdOsInfo from './AuroraCmdOsInfo';
 import AuroraCmdReadDir from './AuroraCmdReadDir';
 import AuroraCmdSessionInfo from './AuroraCmdSessionInfo';
 import AuroraCmdSyncTime from './AuroraCmdSyncTime';
+import AuroraCmdSdFormat from './AuroraCmdSdFormat';
 import AuroraCmdWriteFile from './AuroraCmdWriteFile';
 import AuroraCmdUnloadProfile from './AuroraCmdUnloadProfile';
 import AuroraCmdEnableEventOutput from './AuroraCmdEnableEventOutput';
 import AuroraCmdDisableEventOutput from './AuroraCmdDisableEventOutput';
 import AuroraCmdLedSet from './AuroraCmdLedSet';
+import AuroraCmdLedBlink from './AuroraCmdLedBlink';
+import AuroraCmdLedAlternate from './AuroraCmdLedAlternate';
+import AuroraCmdLedTransition from './AuroraCmdLedTransition';
 import AuroraConstants from './AuroraConstants';
 import AuroraResponseSerialParser from './AuroraResponseSerialParser';
 import EventEmitter from 'events';
@@ -429,11 +433,15 @@ const AuroraCommands = {
     'readDir'           : AuroraCmdReadDir,
     'sessionInfo'       : AuroraCmdSessionInfo,
     'syncTime'          : AuroraCmdSyncTime,
+    'sdFormat'          : AuroraCmdSdFormat,
     'writeFile'         : AuroraCmdWriteFile,
     'unloadProfile'     : AuroraCmdUnloadProfile,
     'enableEventOutput' : AuroraCmdEnableEventOutput,
     'disableEventOutput': AuroraCmdDisableEventOutput,
-    'ledSet'            : AuroraCmdLedSet
+    'ledSet'            : AuroraCmdLedSet,
+    'ledBlink'          : AuroraCmdLedBlink,
+    'ledAlternate'      : AuroraCmdLedAlternate,
+    'ledTransition'     : AuroraCmdLedTransition
 };
 
 
@@ -468,9 +476,10 @@ const AuroraSleepStages = AuroraConstants.SleepStages;
 export {
     Aurora, AuroraCmd, AuroraCmdCopyFile, AuroraCmdReadDir, AuroraCmdReadFile,
     AuroraCmdDeleteDir, AuroraCmdDeleteFile, AuroraCmdDownloadFile,
-    AuroraCmdFlash, AuroraCmdGetProfiles, AuroraCmdOsInfo,
+    AuroraCmdFlash, AuroraCmdGetProfiles, AuroraCmdOsInfo, AuroraCmdSdFormat,
     AuroraCmdSessionInfo, AuroraCmdSyncTime, AuroraCmdWriteFile, AuroraCmdUnloadProfile,
     AuroraCmdEnableEventOutput, AuroraCmdDisableEventOutput, AuroraCmdLedSet,
+    AuroraCmdLedBlink, AuroraCmdLedAlternate, AuroraCmdLedTransition,
     AuroraEvents, AuroraEventOutputs, AuroraLogTypes, AuroraStreams, AuroraStreamOutputs,
     AuroraSleepStages
 };
