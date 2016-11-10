@@ -1,6 +1,6 @@
 {
   "name": "node-aurora",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "Provides an interface to the Aurora Dreamband.",
   "main": "lib/Aurora.js",
   "scripts": {
