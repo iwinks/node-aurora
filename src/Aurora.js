@@ -290,13 +290,15 @@ class Aurora extends EventEmitter {
         //when the command has finished executing
         return cmd.queue().then( resp => {
 
+            this.emit('commandResponse', false, resp);
+
             this._processQueue();
 
             return resp;
             
         }).catch (error => {
 
-            console.log(error);
+            this.emit('commandResponse', true, error);
 
             this.cmdCurrent = null;
 

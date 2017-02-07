@@ -1,10 +1,10 @@
-{
+git {
   "name": "node-aurora",
-  "version": "1.2.3",
+  "version": "2.0.0",
   "description": "Provides an interface to the Aurora Dreamband.",
   "main": "lib/Aurora.js",
   "scripts": {
-    "test": "npm run compile && tape -r babel-register \"test/*.js\" | tap-difflet",
+    "test": "npm run compile && tape -r babel-register \"test/**/*.js\" | tap-difflet",
     "compile": "babel --plugins transform-runtime -d lib/ src/",
     "prepublish": "npm run test "
   },
