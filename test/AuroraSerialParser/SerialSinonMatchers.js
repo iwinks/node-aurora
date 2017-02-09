@@ -1,5 +1,5 @@
 import sinon from 'sinon';
-import AuroraConstants from '../lib/AuroraConstants';
+import AuroraConstants from '../../lib/AuroraConstants';
 
 exports.oneOfMatcher = (array) => {
 
@@ -18,7 +18,7 @@ exports.bufferMatcher = (string) => {
     }));
 };
 
-exports.eventMatcher = (args, multiplier) => {
+exports.auroraEventMatcher = (args, multiplier) => {
 
     return sinon.match.number.and(sinon.match((callIndex) => {
 

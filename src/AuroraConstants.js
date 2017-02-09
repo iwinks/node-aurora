@@ -1,46 +1,5 @@
-const ResponseStates = {
-
-    NO_COMMAND: 0,
-    COMMAND_HEADER: 1,
-    COMMAND_RESPONSE_SUCCESS: 2,
-    COMMAND_RESPONSE_ERROR: 3,
-    COMMAND_FOOTER_SUCCESS: 4,
-    COMMAND_FOOTER_ERROR: 5,
-    FLUSHING_RESPONSE: 6
-};
-
-module.exports.ResponseStates = ResponseStates;
-
 const AURORA_USB_VID = "0x0483";
-module.exports.AURORA_USB_VID = AURORA_USB_VID;
-
-const AURORA_PACKET_SYNC_BYTE = 0xAA;
-module.exports.AURORA_PACKET_SYNC_BYTE = AURORA_PACKET_SYNC_BYTE;
-
-const AURORA_PACKET_OK_BYTE = 0xAA;
-module.exports.AURORA_PACKET_OK_BYTE = AURORA_PACKET_OK_BYTE;
-
-const AURORA_PACKET_ERROR_BYTE = 0xCC;
-module.exports.AURORA_PACKET_ERROR_BYTE = AURORA_PACKET_ERROR_BYTE;
-
-const AURORA_PACKET_MAX_RETRIES = 3;
-module.exports.AURORA_PACKET_MAX_RETRIES = AURORA_PACKET_MAX_RETRIES;
-
-const COMMAND_PROMPT = "# ";
-module.exports.COMMAND_PROMPT = COMMAND_PROMPT;
-
-const COMMAND_DIVIDER_SUCCESS_CHAR = '-';
-module.exports.COMMAND_DIVIDER_SUCCESS_CHAR = COMMAND_DIVIDER_SUCCESS_CHAR;
-
-const COMMAND_DIVIDER_SUCCESS_STRING = '----------------------------------------------------------------';
-module.exports.COMMAND_DIVIDER_SUCCESS_STRING = COMMAND_DIVIDER_SUCCESS_STRING;
-
-const COMMAND_DIVIDER_ERROR_CHAR = '~';
-module.exports.COMMAND_DIVIDER_ERROR_CHAR = COMMAND_DIVIDER_ERROR_CHAR;
-
-const COMMAND_DIVIDER_ERROR_STRING = '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~';
-module.exports.COMMAND_DIVIDER_ERROR_STRING = COMMAND_DIVIDER_ERROR_STRING;
-
+exports.AURORA_USB_VID = AURORA_USB_VID;
 
 const DataTypes = {
     UNKNOWN: 0,
@@ -57,7 +16,7 @@ const DataTypes = {
     PTR: 11
 };
 
-module.exports.DataTypes = DataTypes;
+exports.DataTypes = DataTypes;
 
 const Events = {
 
@@ -103,7 +62,7 @@ const Events = {
 };
 
 
-module.exports.Events = Events;
+exports.Events = Events;
 
 const EventOutputs = {
 
@@ -114,7 +73,7 @@ const EventOutputs = {
     BLUETOOTH: 4
 };
 
-module.exports.EventOutputs = EventOutputs;
+exports.EventOutputs = EventOutputs;
 
 const Streams = {
     
@@ -160,7 +119,7 @@ const Streams = {
 };
 
 
-module.exports.Streams = Streams;
+exports.Streams = Streams;
 
 const StreamOutputs = {
 
@@ -172,7 +131,7 @@ const StreamOutputs = {
     BLE: 5
 };
 
-module.exports.StreamOutputs = StreamOutputs;
+exports.StreamOutputs = StreamOutputs;
 
 const SleepStages = {
   UNKNOWN: 0,
@@ -182,7 +141,7 @@ const SleepStages = {
   REM: 4
 };
 
-module.exports.SleepStages = SleepStages;
+exports.SleepStages = SleepStages;
 
 const LogTypes = {
 
@@ -194,7 +153,7 @@ const LogTypes = {
     DEBUG: 5
 };
 
-module.exports.LogTypes = LogTypes;
+exports.LogTypes = LogTypes;
 
 const LogNamesToTypes = {
 
@@ -206,4 +165,4 @@ const LogNamesToTypes = {
     DBUG: LogTypes.DEBUG
 };
 
-module.exports.LogNamesToTypes = LogNamesToTypes;
+exports.LogNamesToTypes = LogNamesToTypes;

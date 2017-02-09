@@ -19,7 +19,7 @@ const ResponseTableStates = {
     DATA: 4
 };
 
-export default class AuroraResponseLineParser {
+export default class AuroraCmdResponseParser {
 
     constructor() {
 
@@ -157,16 +157,27 @@ export default class AuroraResponseLineParser {
             return +valWithoutNumericSymbols;
         }
 
-        let date = moment(value, [moment.ISO_8601, "YYYY-MM-DD HH:mm:ss:SSS", "MMM  D YYYY - HH:mm:ss"], true);
+        let date = moment(value, [
+            moment.ISO_8601,
+            "YYYY-MM-DD HH:mm:ss:SSS",
+            "MMM  D YYYY - HH:mm:ss",
+            "MMM DD YYYY - HH:mm:ss"
+        ], true);
 
         if (date.isValid()){
 
             return +date;
         }
 
-        if (value === 'true' || value === 'false') {
+        const valueUC = value.toUpperCase();
 
-            return value === 'true';
+        if (valueUC === 'TRUE' || valueUC === 'ON' || valueUC === 'ACTIVE') {
+
+            return true;
+        }
+        else if (valueUC === 'FALSE' || valueUC === 'OFF' || valueUC === 'INACTIVE') {
+
+            return false;
         }
 
         return value;

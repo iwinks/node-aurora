@@ -22,11 +22,10 @@ import AuroraCmdLedBlink from './AuroraCmdLedBlink';
 import AuroraCmdLedAlternate from './AuroraCmdLedAlternate';
 import AuroraCmdLedTransition from './AuroraCmdLedTransition';
 import AuroraConstants from './AuroraConstants';
-import AuroraResponseSerialParser from './AuroraResponseSerialParser';
+import AuroraResponseSerialParser from './AuroraSerialParser';
 import EventEmitter from 'events';
 import fs from 'fs';
 import _ from 'lodash';
-
 
 class Aurora extends EventEmitter {
 
@@ -36,10 +35,9 @@ class Aurora extends EventEmitter {
         serialOptions: {
 
             baudrate: 38400,
-            autoOpen: false
+            autoOpen: false,
+            parser: SerialPort.parsers.byteDelimiter(Buffer.from('\r\n','utf8'))
         },
-        enableLogging: false,
-        logFilePath: 'aurora-serial.log',
         connectTimeout: 10000
     };
 
