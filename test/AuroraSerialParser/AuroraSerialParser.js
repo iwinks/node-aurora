@@ -4,10 +4,10 @@ import sinon from 'sinon';
 import pick from 'lodash/pick';
 import path from 'path';
 import readline from 'readline';
-import {LogTypes} from '../../src/AuroraConstants';
-import AuroraSerialParser from '../../src/AuroraSerialParser';
+import {LogTypes} from '../../lib/AuroraConstants';
+import AuroraSerialParser from '../../lib/AuroraSerialParser';
 
-import { oneOfMatcher, auroraEventMatcher, logMatcher, dataMatcher} from './SerialSinonMatchers';
+import { oneOfMatcher, auroraEventMatcher, logMatcher, streamDataMatcher} from './SerialSinonMatchers';
 
 const cmdResponseSuccess = {
     command: 'os-info',
@@ -44,7 +44,7 @@ const logSpy = sinon.spy();
 const streamDataSpy = sinon.spy();
 const unknownResponseSpy = sinon.spy();
 
-const serialTest = function(name, inputFile, runTest) {
+const serialTest = (name, inputFile, runTest) => {
 
     test(name, t => {
 
@@ -73,10 +73,6 @@ const serialTest = function(name, inputFile, runTest) {
 
             runTest(t);
 
-            t.end();
-
-            parser.removeAllListeners();
-
         });
     });
 };
@@ -91,9 +87,11 @@ serialTest('Testing command response parsing (success case)...', 'SerialCmdRespo
     t.assert(!logSpy.called, "'log' event not fired.");
     t.assert(!streamDataSpy.called, "'streamData' event not fired.");
     t.assert(!unknownResponseSpy.called, "'unknownResponse' event not fired.");
+
+    t.end();
 });
 
-serialTest('Testing command response parsing (error case)...', 'SerialcmdResponseError.mock', t => {
+serialTest('Testing command response parsing (error case)...', 'SerialCmdResponseError.mock', t => {
 
     t.assert(cmdResponseSpy.calledOnce, "'commandResponse' event fired once.");
     const filteredResponse = pick(cmdResponseSpy.args[0][0], Object.keys(cmdResponseError));
@@ -104,7 +102,28 @@ serialTest('Testing command response parsing (error case)...', 'SerialcmdRespons
     t.assert(!streamDataSpy.called, "'streamData' event not fired.");
     t.assert(!unknownResponseSpy.called, "'unknownResponse' event not fired.");
 
+    t.end();
 });
+
+
+serialTest('Testing command response parsing (timeout case)...', 'SerialCmdResponseTimeout.mock', t => {
+
+    setTimeout(() => {
+
+        t.assert(cmdResponseSpy.calledOnce, "'commandResponse' event fired once.");
+        t.assert(cmdResponseSpy.args[0][0], "'commandResponse' event received correct response.");
+
+        t.assert(!auroraEventSpy.called, "'auroraEvent' event not fired.");
+        t.assert(!logSpy.called, "'log' event not fired.");
+        t.assert(!streamDataSpy.called, "'streamData' event not fired.");
+        t.assert(!unknownResponseSpy.called, "'unknownResponse' event not fired.");
+
+        t.end();
+
+    }, 2000);
+
+});
+
 
 serialTest('Testing log response parsing...', 'SerialLog.mock', t => {
 
@@ -117,18 +136,22 @@ serialTest('Testing log response parsing...', 'SerialLog.mock', t => {
     t.assert(!streamDataSpy.called, "'streamData' event not fired.");
     t.assert(!unknownResponseSpy.called, "'unknownResponse' event not fired.");
 
+    t.end();
+
 });
 
 serialTest('Testing aurora event response parsing...', 'SerialAuroraEvent.mock', t => {
 
     t.assert(auroraEventSpy.callCount == 5, "'auroraEvent' event fired 5 times.");
 
-    t.assert(auroraEventSpy.alwaysCalledWithExactly(auroraEventMatcher(auroraEventSpy.args, 11), sinon.match.number), "'auroraEvent' event received correct arguments.");
+    t.assert(auroraEventSpy.alwaysCalledWithExactly(auroraEventMatcher()), "'auroraEvent' event received correct arguments.");
 
     t.assert(!cmdResponseSpy.called, "'commandResponse' event not fired.");
     t.assert(!logSpy.called, "'log' event not fired.");
     t.assert(!streamDataSpy.called, "'streamData' event not fired.");
     t.assert(!unknownResponseSpy.called, "'unknownResponse' event not fired.");
+
+    t.end();
 
 });
 
@@ -136,12 +159,14 @@ serialTest('Testing data response...', 'SerialStreamData.mock', t => {
 
     t.assert(streamDataSpy.callCount == 5, "'streamData' event fired 5 times.");
 
-    t.assert(streamDataSpy.alwaysCalledWithExactly("eeg", dataMatcher()), "'streamData' event received correct arguments.");
+    t.assert(streamDataSpy.alwaysCalledWithExactly(streamDataMatcher()), "'streamData' event received correct arguments.");
 
     t.assert(!cmdResponseSpy.called, "'commandResponse' event not fired.");
     t.assert(!logSpy.called, "'log' event not fired.");
     t.assert(!auroraEventSpy.called, "'auroraEvent' event not fired.");
     t.assert(!unknownResponseSpy.called, "'unknownResponse' event not fired.");
+
+    t.end();
 
 });
 
@@ -153,6 +178,8 @@ serialTest('Testing unknown response...', 'SerialUnknownResponse.mock', t => {
     t.assert(!logSpy.called, "'log' event not fired.");
     t.assert(!streamDataSpy.called, "'streamData' event not fired.");
     t.assert(!auroraEventSpy.called, "'auroraEvent' event not fired.");
+
+    t.end();
 
 });
 
@@ -168,6 +195,8 @@ serialTest('Testing command with output response...', 'SerialCmdResponseWithOutp
     t.assert(!logSpy.called, "'log' event not fired.");
     t.assert(!streamDataSpy.called, "'streamData' event not fired.");
     t.assert(!unknownResponseSpy.called, "'unknownResponse' event not fired.");
+
+    t.end();
 
 });
 
@@ -197,11 +226,13 @@ serialTest('Testing the perfect storm...', 'SerialKitchenSink.mock', t => {
     t.assert(logSpy.alwaysCalledWithExactly(oneOfMatcher(Object.values(LogTypes)), logMatcher(logSpy.args), sinon.match.date), "'log' event received correct arguments.");
 
     t.assert(auroraEventSpy.callCount == 5, "'auroraEvent' event fired 5 times.");
-    t.assert(auroraEventSpy.alwaysCalledWithExactly(auroraEventMatcher(auroraEventSpy.args, 11), sinon.match.number), "'auroraEvent' event received correct arguments.");
+    t.assert(auroraEventSpy.alwaysCalledWithExactly(auroraEventMatcher()), "'auroraEvent' event received correct arguments.");
 
     t.assert(streamDataSpy.callCount == 5, "'streamData' event fired 5 times.");
-    t.assert(streamDataSpy.alwaysCalledWithExactly("eeg", dataMatcher()), "'streamData' event received correct arguments.");
+    t.assert(streamDataSpy.alwaysCalledWithExactly(streamDataMatcher()), "'streamData' event received correct arguments.");
 
     t.assert(!unknownResponseSpy.called, "'unknownResponse' event not fired.");
+
+    t.end();
 
 });

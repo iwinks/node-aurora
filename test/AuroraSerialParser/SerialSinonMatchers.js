@@ -18,11 +18,18 @@ exports.bufferMatcher = (string) => {
     }));
 };
 
-exports.auroraEventMatcher = (args, multiplier) => {
+exports.auroraEventMatcher = () => {
 
-    return sinon.match.number.and(sinon.match((callIndex) => {
+    const eventObj = {
+        eventId: sinon.match.number,
+        event: sinon.match.string,
+        flags: sinon.match.number,
+        time: sinon.match.number
+    };
 
-        return args[callIndex][0]*multiplier == args[callIndex][1];
+    return sinon.match(eventObj).and(sinon.match(event => {
+
+        return event.event == `event${event.flags * event.eventId}`;
 
     }));
 };
@@ -47,21 +54,29 @@ exports.logMatcher = (args) => {
     }));
 };
 
-exports.dataMatcher = () => {
+exports.streamDataMatcher = () => {
 
-    return sinon.match.array.and(sinon.match((array) => {
+    const streamObj = {
+        streamId: sinon.match.number,
+        stream: 'data',
+        data: sinon.match.array,
+        time: sinon.match.number
+    };
 
-        if (array.length == 0) {
+    return sinon.match(streamObj).and(sinon.match(stream => {
+
+        if (stream.data.length != stream.streamId) {
             return false;
         }
 
-        if (array.length === 1) {
+        if (stream.data.length === 1) {
             return true;
         }
 
-        for (let i = 1; i < array.length; i++){
+        //data must be increasing by 1
+        for (let i = 1; i < stream.data.length; i++){
 
-            if (array[i-1] != array[i] - 1) return false;
+            if (stream.data[i-1] != stream.data[i] - 1) return false;
         }
 
         return true;

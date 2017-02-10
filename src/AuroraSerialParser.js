@@ -3,7 +3,6 @@ import {LogNamesToTypes} from './AuroraConstants';
 import AuroraCmdResponseParser from './AuroraCmdResponseParser';
 import moment from 'moment';
 
-
 const CmdStates = {
 
     NO_CMD: 0,
@@ -64,7 +63,7 @@ export default class AuroraSerialParser extends EventEmitter {
 
                     this._cmdState = CmdStates.CMD_HEADER;
 
-                    this._watchdogTimer = setTimeout(this._onCmdTimeout, 3000);
+                    this._watchdogTimer = setTimeout(this._onCmdTimeout, 1000);
                 }
                 else {
 
@@ -90,7 +89,7 @@ export default class AuroraSerialParser extends EventEmitter {
 
             case CmdStates.CMD_OUTPUT :
 
-                this._watchdogTimer = setTimeout(this._onCmdTimeout, 3000);
+                this._watchdogTimer = setTimeout(this._onCmdTimeout, 1000);
 
                 //look for output header
                 if (line[0] == '+' && line.match(/^[\+]{64,}$/)){
@@ -106,8 +105,6 @@ export default class AuroraSerialParser extends EventEmitter {
                 break;
 
             case CmdStates.CMD_RESPONSE :
-
-                this._watchdogTimer = setTimeout(this._onCmdTimeout, 3000);
 
                 //look for output header
                 if (line[0] == '+' && line.match(/^[\+]{64,}$/)){
@@ -125,6 +122,8 @@ export default class AuroraSerialParser extends EventEmitter {
                 }
                 //neither, so this is normal command response
                 else {
+
+                    this._watchdogTimer = setTimeout(this._onCmdTimeout, 1000);
 
                     try {
 
@@ -175,23 +174,47 @@ export default class AuroraSerialParser extends EventEmitter {
         }
         else if (line.slice(0, 6) == 'event-'){
 
-            const eventParts = line.match(/event-(\d{1,2}): (\d+)/i);
+            const eventParts = line.match(/^event-(\d{1,2}): (\d+) \[(\S*)\]$/i);
 
-            if (eventParts && eventParts.length == 3){
+            if (eventParts && eventParts.length == 4) {
 
-                this.emit('auroraEvent', +eventParts[1], +eventParts[2]);
+                const eventId = +eventParts[1];
 
-                return;
+                if (!isNaN(eventId) && eventId < 32) {
+
+                    this.emit('auroraEvent', {
+
+                        eventId,
+                        event: eventParts[3],
+                        flags: +eventParts[2],
+                        time: Date.now()
+                    });
+
+                    return;
+                }
             }
         }
         else {
 
-            const dataParts = line.split(': ');
+            const dataParts = line.match(/^(\S*)-(\d{1,2}): ([\d\s,]+)$/i);
 
-            if (dataParts.length == 2) {
+            if (dataParts && dataParts.length == 4) {
 
-                this.emit('streamData', dataParts[0], dataParts[1].split(',').map(Number));
-                return;
+                const streamId = +dataParts[2];
+
+                if (!isNaN(streamId) && streamId < 32) {
+
+                    this.emit('streamData', {
+
+                        streamId,
+                        stream: dataParts[1],
+                        data: dataParts[3].split(',').map(Number),
+                        time: Date.now()
+                    });
+
+                    return;
+
+                }
             }
         }
 
