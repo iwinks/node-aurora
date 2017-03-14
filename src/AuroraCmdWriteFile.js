@@ -1,56 +1,28 @@
-import Aurora from "./Aurora";
-import AuroraCmd from "./AuroraCmd";
-import _ from 'lodash';
+module.exports = function(destPath, data) {
 
-export default class AuroraCmdWriteFile extends AuroraCmd {
+    let destPathSegments = destPath.split('/');
 
-    static defaultOptions = {
+    const destFileName = destPathSegments.pop();
+    const destFileDir = destPathSegments.length ? destPathSegments.join('/') : '/';
 
-        renameIfExisting: false,
-        silentMode: true,
-        respTypeSuccess: AuroraCmd.RespTypes.OBJECT
+    const rename = 0;
+
+    const onCmdInputRequested = (writeInput) => {
+
+        writeInput(data);
     };
 
-    constructor(destPath, content, options) {
+    this.once('cmdBegin', (cmd) => {
 
-        super('sd-file-write');
+        cmd.connector.once('cmdInputRequested', onCmdInputRequested);
 
-        this.options = _.defaultsDeep(options, AuroraCmdWriteFile.defaultOptions);
+    });
 
-        this.destPath = destPath;
+    this.once('cmdEnd', (cmd) => {
 
-        let destPathSegments = destPath.split('/');
+        cmd.connector.removeListener('cmdInputRequested', onCmdInputRequested);
+    });
 
-        this.destFile = destPathSegments.pop();
-        this.destDir = destPathSegments.length ? destPathSegments.join('/') : '/';
+    return this.queueCmd(`sd-file-write ${destFileName} ${destFileDir} ${rename} 1 3000`);
 
-        this.args = [ this.destFile, this.options.renameIfExisting, this.destDir, this.options.silentMode];
-        this.content = content;
-    }
-
-    exec() {
-
-        super.exec();
-
-        if (typeof this.content == 'string') {
-
-            Aurora.write(this.content + '\r\r\r\r');
-        }
-        else {
-
-            let readStream = this.content;
-
-            readStream.on('end', () => {
-
-                Aurora.write('\r\r\r\r');
-                readStream.removeAllListeners();
-            }).on('data', (data) => {
-
-                this.petWatchdog();
-                Aurora.write(data);
-            });
-        }
-
-    }
-
-}
+};

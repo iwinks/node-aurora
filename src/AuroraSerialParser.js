@@ -1,5 +1,5 @@
 import EventEmitter from 'events';
-import {LogNamesToTypes} from './AuroraConstants';
+import {LogNamesToTypeIds, STREAM_ID_MAX, EVENT_ID_MAX, StreamIdsToNames, EventIdsToNames} from './AuroraConstants';
 import AuroraCmdResponseParser from './AuroraCmdResponseParser';
 import moment from 'moment';
 
@@ -8,7 +8,9 @@ const CmdStates = {
     NO_CMD: 0,
     CMD_HEADER: 1,
     CMD_RESPONSE: 2,
-    CMD_OUTPUT: 3
+    CMD_OUTPUT: 3,
+    CMD_INPUT: 4,
+    CMD_ERROR: 5
 };
 
 export default class AuroraSerialParser extends EventEmitter {
@@ -18,33 +20,25 @@ export default class AuroraSerialParser extends EventEmitter {
         super();
 
         this._cmdResponseParser = new AuroraCmdResponseParser();
-        this._watchdogTimer = null;
+        this._cmdWatchdogTimer = null;
 
         this.reset();
 
-        this._regexLog = new RegExp('\\< (' + Object.keys(LogNamesToTypes).join('|') + ') \\| (\\d{2}:\\d{2}:\\d{2}\\.\\d{3}) \\> (.+)');
+        this._regexLog = new RegExp('^\\< (' + Object.keys(LogNamesToTypeIds).join('|') + ') \\| (\\d{2}:\\d{2}:\\d{2}\\.\\d{3}) \\> (.+)$');
     }
 
     reset() {
 
-        clearTimeout(this._watchdogTimer);
+        clearTimeout(this._cmdWatchdogTimer);
 
-        this.cmd = null;
+        this._cmd = null;
         this._cmdResponseParser.reset();
         this._cmdState = CmdStates.NO_CMD;
     }
 
     parseLine(line) {
 
-        clearTimeout(this._watchdogTimer);
-
-        //trim off whitespace
-        line = line.trim();
-
-        //don't do anything if line is empty
-        if (!line.length) {
-            return;
-        }
+        clearTimeout(this._cmdWatchdogTimer);
 
         let match;
 
@@ -52,18 +46,27 @@ export default class AuroraSerialParser extends EventEmitter {
 
             case CmdStates.NO_CMD :
 
+                //trim off whitespace
+                line = line.trim();
+
+                //don't do anything if line is empty
+                if (!line.length) {
+                    return;
+                }
+
                 //look for command prompt
                 match = line.match(/^# ([a-z-]+.*)$/i);
 
                 if (match){
 
-                    this.cmd = {
-                        command: match[1]
+                    this._cmd = {
+                        command: match[1],
+                        error: false
                     };
 
                     this._cmdState = CmdStates.CMD_HEADER;
 
-                    this._watchdogTimer = setTimeout(this._onCmdTimeout, 1000);
+                    this._cmdWatchdogTimer = setTimeout(this._onCmdTimeout, 1000);
                 }
                 else {
 
@@ -74,8 +77,8 @@ export default class AuroraSerialParser extends EventEmitter {
 
             case CmdStates.CMD_HEADER :
 
-                //look for error or success header
-                if (line.match(/^[-|~]{64,}$/)){
+                //look for response start
+                if (line.match(/^[-]{64,}$/)){
 
                     this._cmdResponseParser.reset();
                     this._cmdState = CmdStates.CMD_RESPONSE;
@@ -89,49 +92,106 @@ export default class AuroraSerialParser extends EventEmitter {
 
             case CmdStates.CMD_OUTPUT :
 
-                this._watchdogTimer = setTimeout(this._onCmdTimeout, 1000);
+                this._cmdWatchdogTimer = setTimeout(this._onCmdTimeout, 1000);
 
-                //look for output header
-                if (line[0] == '+' && line.match(/^[\+]{64,}$/)){
+                //look for output footer
+                if (line[0] == '+' && line.match(/^[+]{64,}$/)){
 
                     this._cmdState = CmdStates.CMD_RESPONSE;
                 }
                 //this must be output
                 else {
 
-                    this.cmd.output += line;
+                    //add back the newlines since this is raw output
+                    this._cmd.output += (this._cmd.output ? '\r\n' : '') + line;
                 }
 
                 break;
 
-            case CmdStates.CMD_RESPONSE :
+            case CmdStates.CMD_INPUT :
 
-                //look for output header
-                if (line[0] == '+' && line.match(/^[\+]{64,}$/)){
+                this._cmdWatchdogTimer = setTimeout(this._onCmdTimeout, 1000);
 
-                    this.cmd.output = '';
-                    this._cmdState = CmdStates.CMD_OUTPUT;
+                //look for input footer
+                if (line[0] == '.' && line.match(/^[.]{64,}$/)){
+
+                    this._cmdState = CmdStates.CMD_RESPONSE;
                 }
-                //or footer
-                else if (match = line.match(/^[-|~]{64,}$/)){
 
-                    this.cmd.response = this._cmdResponseParser.getResponse();
-                    this.cmd.error = match[0][0] === '~';
-                    this.emit('commandResponse', this.cmd);
-                    this._cmdState = CmdStates.NO_CMD;
+                break;
+
+            case CmdStates.CMD_ERROR :
+
+                this._cmdWatchdogTimer = setTimeout(this._onCmdTimeout, 1000);
+
+                //look for error footer
+                if (line[0] == '~' && line.match(/^[~]{64,}$/)){
+
+                    this._cmdState = CmdStates.CMD_RESPONSE;
                 }
-                //neither, so this is normal command response
                 else {
-
-                    this._watchdogTimer = setTimeout(this._onCmdTimeout, 1000);
 
                     try {
 
-                        this._cmdResponseParser.parseLine(line);
+                        this._cmdResponseParser.parseDetect(line);
+                    }
+                    catch (error) {
+
+                        this._triggerCmdError(`Invalid command error response: ${error}`);
+                    }
+                }
+
+                break;
+
+
+            case CmdStates.CMD_RESPONSE :
+
+                //trim off whitespace
+                line = line.trim();
+
+                //don't do anything if line is empty
+                if (!line.length) {
+                    return;
+                }
+
+                //look for output header
+                if (line[0] == '+' && line.match(/^[+]{64,}$/)){
+
+                    this._cmd.output = '';
+                    this._cmdState = CmdStates.CMD_OUTPUT;
+                }
+                //look for input header
+                else if (line[0] == '.' && line.match(/^[.]{64,}$/)){
+
+                    this._cmdState = CmdStates.CMD_INPUT;
+                    this.emit('cmdInputRequested');
+                }
+                //look for error header
+                else if (line[0] == '~' && line.match(/^[~]{64,}$/))
+                {
+                    this._cmd.error = true;
+                    this._cmdResponseParser.reset();
+                    this._cmdState = CmdStates.CMD_ERROR;
+                }
+                //look for end of response
+                else if (match = line.match(/^[-]{64,}$/)){
+
+                    this._cmd.response = this._cmdResponseParser.getResponse();
+                    this.emit('cmdResponse', this._cmd);
+                    this._cmdState = CmdStates.NO_CMD;
+                }
+                //neither, so this is normal command response
+                else if (!this._cmd.error) {
+
+                    this._cmdWatchdogTimer = setTimeout(this._onCmdTimeout, 1000);
+
+                    try {
+
+                        this._cmdResponseParser.parseDetect(line);
                     }
                     catch(error) {
 
-                        this._triggerCmdError('Invalid command response.')
+                        this._triggerCmdError(`Invalid command response: ${error}`);
                     }
                 }
 
@@ -141,13 +201,13 @@ export default class AuroraSerialParser extends EventEmitter {
 
     _triggerCmdError = (message) => {
 
-        this.cmd.error = true;
-        this.cmd.response = {
+        this._cmd.error = true;
+        this._cmd.response = {
             error: -64,
             message
         };
 
-        this.emit('commandResponse', this.cmd);
+        this.emit('cmdResponse', this._cmd);
 
         this.reset();
     };
@@ -165,10 +225,13 @@ export default class AuroraSerialParser extends EventEmitter {
 
             if (logParts && logParts.length == 4){
 
-                const logDate = moment(logParts[2], "HH:mm:ss.SSS", true).toDate();
+                this.emit('log', {
+                    typeId: LogNamesToTypeIds[logParts[1].toUpperCase()],
+                    type: logParts[1].toUpperCase(),
+                    time: +moment(logParts[2], "HH:mm:ss.SSS", true),
+                    message: logParts[3]
+                });
 
-                this.emit('log', LogNamesToTypes[logParts[1].toUpperCase()], logParts[3], logDate);
-                
                 return;
             }
         }
@@ -180,12 +243,12 @@ export default class AuroraSerialParser extends EventEmitter {
 
                 const eventId = +eventParts[1];
 
-                if (!isNaN(eventId) && eventId < 32) {
+                if (!isNaN(eventId) && eventId <= EVENT_ID_MAX) {
 
                     this.emit('auroraEvent', {
 
                         eventId,
-                        event: eventParts[3],
+                        event: EventIdsToNames[eventId],
                         flags: +eventParts[2],
                         time: Date.now()
                     });
@@ -196,18 +259,18 @@ export default class AuroraSerialParser extends EventEmitter {
         }
         else {
 
-            const dataParts = line.match(/^(\S*)-(\d{1,2}): ([\d\s,]+)$/i);
+            const dataParts = line.match(/^(\S*)-(\d{1,2}): ([\d\s,.-]+)$/i);
 
             if (dataParts && dataParts.length == 4) {
 
                 const streamId = +dataParts[2];
 
-                if (!isNaN(streamId) && streamId < 32) {
+                if (!isNaN(streamId) && streamId <= STREAM_ID_MAX) {
 
                     this.emit('streamData', {
 
                         streamId,
-                        stream: dataParts[1],
+                        stream: StreamIdsToNames[streamId],
                         data: dataParts[3].split(',').map(Number),
                         time: Date.now()
                     });
@@ -218,7 +281,7 @@ export default class AuroraSerialParser extends EventEmitter {
             }
         }
 
-        this.emit('unknownResponse', line);
+        this.emit('parseError', line);
     };
 
 }

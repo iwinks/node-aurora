@@ -5,10 +5,9 @@ import moment from 'moment';
 const ResponseStates = {
 
     INIT: 0,
-    ARRAY: 1,
-    OBJECT: 2,
-    OBJECT_ARRAY: 3,
-    OUTPUT: 4
+    OBJECT: 1,
+    TABLE: 2,
+    OUTPUT: 3
 };
 
 const ResponseTableStates = {
@@ -29,13 +28,34 @@ export default class AuroraCmdResponseParser {
     reset() {
 
         this.response = null;
-        this.responseNestedProp = null;
         this.responseState = ResponseStates.INIT;
         this.responseTableState = ResponseTableStates.INIT;
+        this.responseTableCols = [];
     }
 
+    parseObject(line)
+    {
+        if (line.length > 128) throw new Error('Line exceeded max length of 128 bytes.');
 
-    parseLine(line) {
+        line = line.trim();
+
+        if (!line.length) return;
+
+        if (this.responseState == ResponseStates.INIT) {
+
+            this.response = {};
+            this.responseState = ResponseStates.OBJECT;
+        }
+
+        if (this.responseState != ResponseStates.OBJECT) throw new Error('Invalid response state to parse an object.');
+
+        const [objKey, ...objValueArray] = line.split(':');
+        const objValue = objValueArray.join(':');
+
+        this.response[camelCase(objKey.trim())] = this._parseValue(objValue);
+    }
+
+    parseTable(line){
 
         if (line.length > 128) throw new Error('Line exceeded max length of 128 bytes.');
 
@@ -43,67 +63,53 @@ export default class AuroraCmdResponseParser {
 
         if (!line.length) return;
 
-        //if we have a nest prop, check for nest divider end
-        if (this.responseNestedProp && this._isObjectNestDivider(line)){
+        if (this._isTableDivider(line)) return;
 
-            //edge case: if a nest was started but didn't
-            //contain anything, treat it as an empty array
-            if (this.responseState == ResponseStates.INIT){
+        //this must be the columns
+        if (this.responseState == ResponseStates.INIT){
 
-                this.response[this.responseNestedProp] = [];
-            }
-
-            //this is the end of a nest
-            //so reset the state back to where
-            //we were before
-            this.responseNestedProp = null;
-            this.responseState = ResponseStates.OBJECT;
+            this.response = [];
+            this.responseTableCols = line.split('|').map(col => camelCase(col.trim()));
+            this.responseState = ResponseStates.TABLE;
 
             return;
         }
 
+        if (this.responseState != ResponseStates.TABLE) throw new Error('Invalid response state to parse a table.');
+
+        this.response.push(zipObject(this.responseTableCols, line.split('|').map(this._parseValue)));
+
+    }
+
+    parseDetect(line) {
+
+        if (line.length > 128) throw new Error('Line exceeded max length of 128 bytes.');
+
+        line = line.trim();
+
+        if (!line.length) return;
+
         //on initial state we detect the response type
         if (this.responseState == ResponseStates.INIT){
 
-            this.responseState = this._detectState(line);
+            const detectedState = this._detectState(line);
 
-            const initialValue = (this.responseState == ResponseStates.ARRAY || this.responseState == ResponseStates.OBJECT_ARRAY) ? [] : {};
+            if (detectedState == ResponseStates.OBJECT) {
 
-            //set initial value accordingly
-            if (this.responseNestedProp) {
-
-                this.response[this.responseNestedProp] = initialValue;
+                this.parseObject(line);
             }
-            else {
+            else if (detectedState == ResponseStates.TABLE) {
 
-                this.response = initialValue;
+                this.parseTable(line);
             }
-        }
-
-        if (this.responseState == ResponseStates.ARRAY) {
-
-            this._getCurrentResponse().push(this._parseValue(line));
         }
         else if (this.responseState == ResponseStates.OBJECT) {
 
-            const [objKey, ...objValueArray] = line.split(':');
-            const objValue = objValueArray.join(':');
-
-            if (this._isObjectNestDivider(objValue)){
-
-                if (this.responseNestedProp) throw new Error('Object nesting only supported 1 level deep.');
-
-                this.responseNestedProp = camelCase(objKey.trim());
-                this.responseState = ResponseStates.INIT;
-
-                return;
-            }
-
-            this._getCurrentResponse()[camelCase(objKey.trim())] = this._parseValue(objValue);
+            this.parseObject(line);
         }
-        else if (this.responseState == ResponseStates.OBJECT_ARRAY) {
+        else if (this.responseState == ResponseStates.TABLE) {
 
-            this._parseTable(line);
+            this.parseTable(line);
         }
     }
 
@@ -126,31 +132,24 @@ export default class AuroraCmdResponseParser {
 
         if (line.length > 2){
 
-            //if we haven't detected a state yet, let's be extra careful
-            //about the first detection and check to make sure the value
-            //can't be detected as something else, i.e. first element
-            //of array is a date that contains ":"
-            if (this.responseState != ResponseStates.INIT || this._parseValue(line) === line){
+            if (line[0] == '|' && line[line.length-1] == '|'){
 
-                if (line[0] == '|' && line[line.length-1] == '|'){
+                return ResponseStates.TABLE;
+            }
+            else if (line.indexOf(':') > 0 && line.length > 2){
 
-                    return ResponseStates.OBJECT_ARRAY;
-                }
-                else if (line.indexOf(':') > 0 && line.length > 2){
-
-                    return ResponseStates.OBJECT;
-                }
+                return ResponseStates.OBJECT;
             }
         }
 
-        return ResponseStates.ARRAY;
+        return ResponseStates.INIT;
     }
 
     _parseValue(value) {
 
         value = value.trim();
 
-        const valWithoutNumericSymbols = value.replace(/[$%,]+/g,'');
+        const valWithoutNumericSymbols = value.replace(/[$%,]+|(ms$)/g,'');
 
         if (!isNaN(valWithoutNumericSymbols)) {
 
@@ -183,98 +182,11 @@ export default class AuroraCmdResponseParser {
         return value;
     }
 
-    _parseTable(line) {
-
-        switch (this.responseTableState) {
-
-            case ResponseTableStates.INIT:
-
-                if (!this._isTableDivider(line)) throw new Error('Expected table start.');
-
-                //get array of column lengths
-                const colLengths = line.slice(1, -1).split('|').map(col => col.length);
-
-                //always match beginning of string
-                let colRegexStr = '^\\|';
-
-                //generate regex string, accounting for column lengths
-                //this allow the column values to contain "|" characters
-                //without screwing anything up
-                for (const colLength of colLengths) {
-
-                    colRegexStr += `(.{${colLength}})\\|`;
-                }
-
-                //always match end of string
-                colRegexStr += '$';
-
-                this.responseTableColRegex = new RegExp(colRegexStr);
-
-                this.responseTableState = ResponseTableStates.COLUMNS;
-
-                break;
-
-            case ResponseTableStates.COLUMNS:
-
-                //the matched groups represent the column names
-                const columns = line.match(this.responseTableColRegex);
-
-                if (!columns || columns.length < 2) throw new Error('Expected table columns.');
-
-                //and run columns through trim and camelCase
-                this.responseTableCols = columns.splice(1).map(col => camelCase(col.trim()));
-
-                this.responseTableState = ResponseTableStates.HEADER;
-
-                break;
-
-            case ResponseTableStates.HEADER:
-
-                if (!this._isTableHeaderOrFooter(line)) throw new Error('Expected table header.');
-
-                this.responseTableState = ResponseTableStates.DATA;
-
-                break;
-
-            case ResponseTableStates.DATA:
-
-                if (this._isTableHeaderOrFooter(line)){
-
-                    this.responseTableState = ResponseTableStates.INIT;
-                    break;
-                }
-
-                if (this._isTableDivider(line)){
-
-                    break;
-                }
-
-                const values = line.match(this.responseTableColRegex);
-
-                if (!values || values.length-1 != this.responseTableCols.length) throw new Error('Expected table values.');
-
-                this._getCurrentResponse().push(zipObject(this.responseTableCols, values.splice(1).map(this._parseValue)));
-
-                break;
-        }
-
-    }
 
     _isTableDivider(line) {
 
-        //looks for divider that consist exclusively of '|' and '-' characters
-        return line.trim().match(/^[-|\|]{3,}$/) != null;
+        //looks for divider that starts/ends with '|' and consists exclusively of '|' and '-', or '=' characters
+        return line.trim().match(/^\|[-|=]{3,}\|$/) != null;
     }
 
-    _isTableHeaderOrFooter(line) {
-
-        //looks for divider that consist exclusively of '|' and '=' characters
-        return line.trim().match(/^[=|\|]{3,}$/) != null;
-    }
-
-    _isObjectNestDivider(line) {
-
-        //looks for divider that consist exclusively of '.' characters
-        return line.trim().match(/^[\.]{3,}$/) != null;
-    }
 }

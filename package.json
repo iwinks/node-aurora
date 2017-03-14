@@ -4,7 +4,9 @@
   "description": "Provides an interface to the Aurora Dreamband.",
   "main": "lib/Aurora.js",
   "scripts": {
-    "test": "npm run compile && tape -r babel-register \"test/**/*.js\" | tap-difflet",
+    "test": "npm run compile && tape -r babel-register \"test\" | tap-difflet",
+    "test-parsers": "npm run compile && tape -r babel-register \"test/AuroraParsers\" | tap-difflet",
+    "test-aurora": "npm run compile && tape -r babel-register \"test/Aurora\" | tap-difflet",
     "compile": "babel --plugins transform-runtime -d lib/ src/",
     "prepublish": "npm run test "
   },
@@ -34,7 +36,6 @@
     "babel-preset-es2017": "^6.14.0",
     "babel-preset-stage-0": "^6.5.0",
     "babel-register": "^6.9.0",
-    "proxyquire": "^1.7.10",
     "sinon": "^1.17.4",
     "tap-difflet": "^0.7.0",
     "tape": "^4.6.0"
@@ -42,11 +43,13 @@
   "dependencies": {
     "babel-runtime": "^6.9.0",
     "binary-parser": "iwinks/binary-parser",
-    "eject-media": "0.0.2",
+    "drivelist": "^5.0.10",
+    "eject-media": "^0.0.3",
     "flat": "^2.0.0",
     "lodash": "^4.13.1",
     "mkdirp": "^0.5.1",
     "moment": "^2.13.0",
+    "noble": "^1.8.0",
     "serialport": "^4.0.7",
     "usb-detection": "^1.4.0"
   }

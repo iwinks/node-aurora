@@ -1,55 +1,10 @@
-import Aurora from "./Aurora";
-import AuroraCmd from "./AuroraCmd";
-import AuroraCmdTransformBinary from "./AuroraCmdTransformBinary";
-import _ from "lodash";
+module.exports = function(srcPath) {
 
-export default class AuroraCmdReadFile extends AuroraCmd {
-    
-    static defaultOptions = {
-        
-        respTypeSuccess: AuroraCmd.RespTypes.STRING,
-        packetMode: true,
-        binaryDataType: false
-    };
-    
-    constructor(srcPath, options) {
+    let srcPathSegments = srcPath.split('/');
 
-        options =  _.defaultsDeep(options, AuroraCmdReadFile.defaultOptions);
+    const srcFileName = srcPathSegments.pop();
+    const srcFileDir = srcPathSegments.length ? srcPathSegments.join('/') : '/';
 
+    return this.queueCmd(`sd-file-read ${srcFileName} ${srcFileDir}`).then((cmd) => cmd.output);
 
-        let srcPathSegments = srcPath.split('/');
-
-        let args = [
-            srcPathSegments.pop(),
-            srcPathSegments.length ? srcPathSegments.join('/') : '/',
-            options.packetMode
-        ];
-        
-        super('sd-file-read', args, options);
-
-        this.srcPath = srcPath;
-    }
-    
-    exec(){
-
-        //disable packet mode for old aurora firmware
-        //TODO: remove once stable
-        if (Aurora.firmwareInfo.version.number < 900){
-            this.args[2] = false;            //TODO: don't store args like this...
-            this.options.packetMode = false; //for this very reason
-        }
-
-        super.exec();
-    }
-
-    _setupRespSuccess() {
-        
-        super._setupRespSuccess();
-
-        if (this.options.binaryDataType !== false){
-        
-            this.respSuccessStreamBack = this.respSuccessStreamBack.pipe(new AuroraCmdTransformBinary({dataType: this.options.binaryDataType}));
-        }
-
-    }
-}
+};

@@ -1,24 +1,7 @@
-import AuroraCmd from "./AuroraCmd";
+module.exports = function(connector='any') {
 
-export default class AuroraCmdSyncTime extends AuroraCmd {
+    const date = new Date();
+    const msAfterMidnight = date.getHours() * 3600000 + date.getMinutes() * 60000 + date.getSeconds() * 1000 + date.getMilliseconds();
 
-    constructor(options) {
-
-        super('clock-set', [], options);
-    }
-
-    toString() {
-
-        let date = new Date();
-
-        let ms_after_midnight = date.getHours() * 3600000 + date.getMinutes() * 60000 + date.getSeconds() * 1000 + date.getMilliseconds();
-
-        let cmdStr = this.cmd + ' ' + date.getFullYear() + ' '
-            + (date.getMonth() + 1) + ' '
-            + date.getDate() + ' '
-            + ms_after_midnight;
-
-        return cmdStr;
-    }
-
-}
+    return this.queueCmd(`clock-set ${date.getFullYear()} ${date.getMonth()+1} ${date.getDate()} ${msAfterMidnight}`, connector);
+};

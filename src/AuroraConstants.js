@@ -1,7 +1,38 @@
-const AURORA_USB_VID = "0x0483";
-exports.AURORA_USB_VID = AURORA_USB_VID;
+exports.AURORA_USB_VID = '0x0483';
+exports.AURORA_USB_SERIAL_PID = '0x5740';
+exports.AURORA_USB_MSD_PID = '0xABED';
 
-const DataTypes = {
+exports.MSD_DRIVE_NAME = 'Aurora Drive';
+
+exports.BLE_CMD_MAX_PACKET_LENGTH = 20;
+
+exports.BLE_CMD_MAX_PAYLOAD = 120;
+
+exports.BleCmdStates = {
+    IDLE: 0,
+    CMD_EXECUTE: 1,
+    CMD_RESP_OBJECT_READY: 2,
+    CMD_RESP_TABLE_READY: 3,
+    CMD_INPUT_REQUESTED: 4
+};
+
+exports.BleAuroraService = '6175726f7261454daf7942b381af0204';
+
+exports.BleAuroraChars = {
+
+    AURORA_EVENT_INDICATED: '6175726f726149ce8077a614a0dda570',
+    AURORA_EVENT_NOTIFIED: '6175726f726149ce8077a614a0dda571',
+
+    CMD_DATA: '6175726f726149ce8077b954b033c880',
+    CMD_STATUS: '6175726f726149ce8077b954b033c881',
+    CMD_OUTPUT_INDICATED: '6175726f726149ce8077b954b033c882',
+    CMD_OUTPUT_NOTIFIED: '6175726f726149ce8077b954b033c883',
+
+    STREAM_DATA_INDICATED: '6175726f726149ce8077b954b033c890',
+    STREAM_DATA_NOTIFIED: '6175726f726149ce8077b954b033c891'
+};
+
+exports.DataTypes = {
     UNKNOWN: 0,
     BOOL: 1,
     CHAR: 2,
@@ -16,13 +47,11 @@ const DataTypes = {
     PTR: 11
 };
 
-exports.DataTypes = DataTypes;
-
-const Events = {
+exports.EventIds = {
 
     SIGNAL_MONITOR: 0,
     SLEEP_TRACKER_MONITOR: 1,
-    MOVEMENT: 2,
+    MOVEMENT_MONITOR: 2,
     STIM_PRESENTED: 3,
 
     AWAKENING: 4,
@@ -61,10 +90,52 @@ const Events = {
     CLOCK_TIMER_FIRE: 31
 };
 
+exports.EventIdsToNames = {
 
-exports.Events = Events;
+    [exports.EventIds.SIGNAL_MONITOR]: 'signal-monitor',
+    [exports.EventIds.SLEEP_TRACKER_MONITOR]: 'st-monitor',
+    [exports.EventIds.MOVEMENT_MONITOR]: 'movement-monitor',
+    [exports.EventIds.STIM_PRESENTED]: 'stim-presented',
 
-const EventOutputs = {
+    [exports.EventIds.AWAKENING]: 'awakening',
+    [exports.EventIds.AUTO_SHUTDOWN]: 'auto-shutdown',
+    [exports.EventIds.EVENT_RESERVED1]: 'rsvd1',
+    [exports.EventIds.EVENT_RESERVED2]: 'rsvd2',
+
+    [exports.EventIds.EVENT_RESERVED3]: 'rsvd3',
+    [exports.EventIds.EVENT_RESERVED4]: 'rsvd4',
+    [exports.EventIds.EVENT_RESERVED5]: 'rsvd5',
+    [exports.EventIds.EVENT_RESERVED6]: 'rsvd6',
+
+    [exports.EventIds.EVENT_RESERVED7]: 'rsvd7',
+    [exports.EventIds.EVENT_RESERVED8]: 'rsvd8',
+    [exports.EventIds.EVENT_RESERVED9]: 'rsvd9',
+    [exports.EventIds.EVENT_RESERVED10]: 'rsvd10',
+
+    [exports.EventIds.BUTTON_MONITOR]: 'button-monitor',
+    [exports.EventIds.SDCARD_MONITOR]: 'sdcard-monitor',
+    [exports.EventIds.USB_MONITOR]: 'usb-monitor',
+    [exports.EventIds.BATTERY_MONITOR]: 'batt-monitor',
+
+    [exports.EventIds.BUZZ_MONITOR]: 'buzz-monitor',
+    [exports.EventIds.LED_MONITOR]: 'led-monitor',
+    [exports.EventIds.EVENT_RESERVED11]: 'rsvd11',
+    [exports.EventIds.EVENT_RESERVED12]: 'rsvd12',
+
+    [exports.EventIds.BLE_MONITOR]: 'ble-monitor',
+    [exports.EventIds.BLE_NOTIFY]: 'ble-notify',
+    [exports.EventIds.BLE_INDICATE]: 'ble-indicate',
+    [exports.EventIds.CLOCK_ALARM_FIRE]: 'clock-alarm-fire',
+
+    [exports.EventIds.CLOCK_TIMER0_FIRE]: 'clock-timer0-fire',
+    [exports.EventIds.CLOCK_TIMER1_FIRE]: 'clock-timer1-fire',
+    [exports.EventIds.CLOCK_TIMER2_FIRE]: 'clock-timer2-fire',
+    [exports.EventIds.CLOCK_TIMER_FIRE]: 'clock-timer-fire'
+};
+
+exports.EVENT_ID_MAX = 31;
+
+exports.EventOutputIds = {
 
     USB: 0,
     LOG: 1,
@@ -73,9 +144,7 @@ const EventOutputs = {
     BLUETOOTH: 4
 };
 
-exports.EventOutputs = EventOutputs;
-
-const Streams = {
+exports.StreamIds = {
     
     SIGNAL_QUALITY: 0,
     RAW_EEG: 1,
@@ -118,10 +187,52 @@ const Streams = {
     STREAM_RESERVED14: 31
 };
 
+exports.STREAM_ID_MAX = 31;
 
-exports.Streams = Streams;
+exports.StreamIdsToNames = {
 
-const StreamOutputs = {
+    [exports.StreamIds.SIGNAL_QUALITY]: 'signal',
+    [exports.StreamIds.RAW_EEG]: 'eeg',
+    [exports.StreamIds.HEART_RATE]: 'heart',
+    [exports.StreamIds.ACCEL_X]: 'accel-x',
+
+    [exports.StreamIds.ACCEL_Y]: 'accel-y',
+    [exports.StreamIds.ACCEL_Z]: 'accel-z',
+    [exports.StreamIds.GYRO_X]: 'gyro-x',
+    [exports.StreamIds.GYRO_Y]: 'gyro-y',
+
+    [exports.StreamIds.GYRO_Z]: 'gyro-z',
+    [exports.StreamIds.TEMPERATURE]: 'temp',
+    [exports.StreamIds.BATTERY]: 'batt',
+    [exports.StreamIds.STREAM_RESERVED1]: 'rsvd1',
+
+    [exports.StreamIds.STREAM_RESERVED2]: 'rsvd2',
+    [exports.StreamIds.STREAM_RESERVED3]: 'rsvd3',
+    [exports.StreamIds.STREAM_RESERVED4]: 'rsvd4',
+    [exports.StreamIds.STREAM_RESERVED5]: 'rsvd5',
+
+    [exports.StreamIds.SLEEP_FEATURES]: 'sf',
+    [exports.StreamIds.SLEEP_STAGES]: 'ss',
+    [exports.StreamIds.SLEEP_TRACKER]: 'st',
+    [exports.StreamIds.STREAM_RESERVED6]: 'rsvd6',
+
+    [exports.StreamIds.STREAM_RESERVED7]: 'rsvd7',
+    [exports.StreamIds.STREAM_RESERVED8]: 'rsvd8',
+    [exports.StreamIds.STREAM_RESERVED9]: 'rsvd9',
+    [exports.StreamIds.STREAM_RESERVED10]: 'rsvd10',
+
+    [exports.StreamIds.ACCEL_MAGNITUDE]: 'accel-mag',
+    [exports.StreamIds.GYRO_MAGNITUDE]: 'gyro-mag',
+    [exports.StreamIds.ROTATION_ROLL]: 'roll',
+    [exports.StreamIds.ROTATION_PITCH]: 'pitch',
+
+    [exports.StreamIds.STREAM_RESERVED11]: 'rsvd11',
+    [exports.StreamIds.STREAM_RESERVED12]: 'rsvd12',
+    [exports.StreamIds.STREAM_RESERVED13]: 'rsvd13',
+    [exports.StreamIds.STREAM_RESERVED14]: 'rsvd14'
+};
+
+exports.StreamOutputIds = {
 
     SILENT: 0,
     FILE_CSV: 1,
@@ -131,9 +242,7 @@ const StreamOutputs = {
     BLE: 5
 };
 
-exports.StreamOutputs = StreamOutputs;
-
-const SleepStages = {
+exports.SleepStages = {
   UNKNOWN: 0,
   AWAKE: 1,
   LIGHT: 2,
@@ -141,9 +250,7 @@ const SleepStages = {
   REM: 4
 };
 
-exports.SleepStages = SleepStages;
-
-const LogTypes = {
+exports.LogTypeIds = {
 
     DATA: 0,
     INFO: 1,
@@ -153,16 +260,12 @@ const LogTypes = {
     DEBUG: 5
 };
 
-exports.LogTypes = LogTypes;
+exports.LogNamesToTypeIds = {
 
-const LogNamesToTypes = {
-
-    DATA: LogTypes.DATA,
-    INFO: LogTypes.INFO,
-    EVNT: LogTypes.EVENT,
-    WARN: LogTypes.WARNING,
-    ERRO: LogTypes.ERROR,
-    DBUG: LogTypes.DEBUG
+    DATA: exports.LogTypeIds.DATA,
+    INFO: exports.LogTypeIds.INFO,
+    EVNT: exports.LogTypeIds.EVENT,
+    WARN: exports.LogTypeIds.WARNING,
+    ERRO: exports.LogTypeIds.ERROR,
+    DBUG: exports.LogTypeIds.DEBUG
 };
-
-exports.LogNamesToTypes = LogNamesToTypes;
