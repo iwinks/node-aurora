@@ -3,9 +3,8 @@ import fs from 'fs';
 import sinon from 'sinon';
 import pick from 'lodash/pick';
 import path from 'path';
-import readline from 'readline';
 import AuroraSerialParser from '../../../lib/AuroraSerialParser';
-import {spiesCalledOnce, spiesNeverCalled} from '../../util';
+import {spiesCalled,spiesCalledOnce, spiesNeverCalled} from '../../util';
 import { auroraEventMatcher, logMatcher, streamDataMatcher} from './SerialSinonMatchers';
 
 const cmdResponseSuccess = {
@@ -33,17 +32,10 @@ const cmdResponseError = {
     }
 };
 
-const cmdResponseWithOutput = Object.assign({}, cmdResponseSuccess, {
-    output: 'abcdefghijklmnopqrstuvwxyz\r\nABCDEFGHIJKLMNOPQRSTUVWXYZ'
-});
-
-const cmdResponseWithInput = Object.assign({}, cmdResponseSuccess, {
-    input: 'abcdefghijklmnopqrstuvwxyz\r\nABCDEFGHIJKLMNOPQRSTUVWXYZ'
-});
-
 const events = [
     'cmdResponse',
     'cmdInputRequested',
+    'cmdOutputReady',
     'auroraEvent',
     'log',
     'streamData',
@@ -66,24 +58,25 @@ const serialTest = (name, inputFile, runTest) => {
             parser.on(event, eventSpies[event]);
         }
 
-        const lineReader = readline.createInterface({
-            input: fs.createReadStream(path.join(__dirname, inputFile))
-        });
+        fs.readFile(path.join(__dirname, inputFile), (error, data) => {
 
-        let lineCount = 0;
+            const lineCount = data.toString().split('\r\n').map((l) => l.trim()).filter((l) => l).length;
 
-        lineReader.on('line', line => {
-            parser.parseLine(line);
-            if (line.trim()){
-                lineCount++;
+            let i = 0;
+            const bufferLength = data.length;
+
+            while (i < bufferLength) {
+
+                const bytesToRead = Math.floor(Math.random() * 20) + 1;
+
+                parser.parseChunk(data.slice(i, Math.min(i+bytesToRead, bufferLength)));
+                i += bytesToRead;
             }
-        });
-
-        lineReader.on('close', () => {
 
             runTest(t, lineCount);
 
         });
+
     });
 };
 
@@ -119,6 +112,8 @@ serialTest('Testing command response serial parsing (error case)...', 'SerialCmd
 serialTest('Testing command response serial parsing (timeout case)...', 'SerialCmdResponseTimeout.mock', (t) => {
 
     setTimeout(() => {
+
+        console.log('cmdResponse called', eventSpies.cmdResponse.called);
 
         spiesCalledOnce(t, ['cmdResponse'], eventSpies);
 
@@ -184,13 +179,14 @@ serialTest('Testing serial parse error...', 'SerialParseError.mock', (t, lineCou
 serialTest('Testing serial parsing of command with output response...', 'SerialCmdResponseWithOutput.mock', (t) => {
 
     spiesCalledOnce(t, ['cmdResponse'], eventSpies);
+    spiesCalled(t, ['cmdOutputReady'], eventSpies);
 
     if (eventSpies.cmdResponse.calledOnce) {
-        const filteredResponse = pick(eventSpies.cmdResponse.args[0][0], Object.keys(cmdResponseWithOutput));
-        t.deepEqual(cmdResponseWithOutput, filteredResponse, "'cmdResponse' event received correct response with output.");
+        const filteredResponse = pick(eventSpies.cmdResponse.args[0][0], Object.keys(cmdResponseSuccess));
+        t.deepEqual(cmdResponseSuccess, filteredResponse, "'cmdResponse' event received correct response.");
     }
 
-    spiesNeverCalled(t, events, eventSpies, ['cmdResponse']);
+    spiesNeverCalled(t, events, eventSpies, ['cmdResponse','cmdOutputReady']);
 
     t.end();
 
@@ -201,8 +197,8 @@ serialTest('Testing serial parsing of command with input response...', 'SerialCm
     spiesCalledOnce(t, ['cmdResponse','cmdInputRequested'], eventSpies);
 
     if (eventSpies.cmdResponse.calledOnce) {
-        const filteredResponse = pick(eventSpies.cmdResponse.args[0][0], Object.keys(cmdResponseWithInput));
-        t.deepEqual(cmdResponseWithInput, filteredResponse, "'cmdResponse' event received correct response with input.");
+        const filteredResponse = pick(eventSpies.cmdResponse.args[0][0], Object.keys(cmdResponseSuccess));
+        t.deepEqual(cmdResponseSuccess, filteredResponse, "'cmdResponse' event received correct response.");
     }
 
     spiesNeverCalled(t, events, eventSpies, ['cmdResponse','cmdInputRequested']);
@@ -218,6 +214,8 @@ serialTest('Testing serial parsing of the perfect storm...', 'SerialKitchenSink.
 
     t.assert(cmdResponse.callCount == 4, "'cmdResponse' event fired four times.");
 
+    spiesCalled(t, ['cmdOutputReady','cmdInputRequested'], eventSpies);
+
     let filteredResponse;
 
     if (cmdResponse.callCount == 4) {
@@ -227,8 +225,8 @@ serialTest('Testing serial parsing of the perfect storm...', 'SerialKitchenSink.
         t.deepEqual(cmdResponseSuccess, filteredResponse, "'cmdResponse' event received first correct response.");
 
         //2nd call success w/data
-        filteredResponse = pick(cmdResponse.args[1][0], Object.keys(cmdResponseWithOutput));
-        t.deepEqual(cmdResponseWithOutput, filteredResponse, "'cmdResponse' event received correct success response with output.");
+        filteredResponse = pick(cmdResponse.args[1][0], Object.keys(cmdResponseSuccess));
+        t.deepEqual(cmdResponseSuccess, filteredResponse, "'cmdResponse' event received correct success response with output.");
 
         //3rd call error
         filteredResponse = pick(cmdResponse.args[2][0], Object.keys(cmdResponseError));
@@ -237,7 +235,6 @@ serialTest('Testing serial parsing of the perfect storm...', 'SerialKitchenSink.
         //4th call contains table w/ input
         const fourthSuccess = cmdResponse.args[3][0];
         t.assert(fourthSuccess.error === false && Array.isArray(fourthSuccess.response) && typeof fourthSuccess.response[0] == 'object', "'cmdResponse' event received last correct response.");
-        t.assert(fourthSuccess.input === cmdResponseWithInput.input, "'cmdResponse' event received correct input with response.");
     }
 
     t.assert(log.callCount == 5, "'log' event fired 5 times.");

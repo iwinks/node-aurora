@@ -1,42 +1,44 @@
-import split from 'split';
+import mkdirp from 'mkdirp';
+import path from 'path';
+import fs from 'fs';
+import {promisify} from './util';
+import AuroraTransformBinary from './AuroraTransformBinary';
 
-module.exports = async function(connector = 'any') {
+module.exports = async function(session, destDir, connector = 'any') {
 
-    const profileListReadResp = await this.readFile('profiles/_profiles.list', split(), connector);
+    await promisify(mkdirp)(destDir);
 
-    const profileIds = profileListReadResp.output.filter(String).map((prof) => {
+    return Promise.all(session.streams.map((stream) => {
 
-        const [profileName, profileId] = prof.trim().split(':');
+        let transform;
+        let file = stream.file;
 
-        return {profileName, profileId};
+        if (file.slice(-4) == '.dat'){
+
+            file = file.slice(0, -4) + '.csv';
+            transform = new AuroraTransformBinary(stream.type);
+        }
+
+        let writeStream = fs.createWriteStream(path.join(destDir, file));
+
+        if (transform){
+
+            transform.pipe(writeStream);
+            writeStream = transform;
+        }
+
+        const streamAuroraPath = `${session.auroraDir}/${stream.file}`;
+
+        return this.readFile(streamAuroraPath, writeStream, connector).then(() => {
+
+            return this.queueCmd(`sd-file-del ${streamAuroraPath}`);
+
+        });
+
+    })).then(() => {
+
+        return this.queueCmd(`sd-dir-del ${session.auroraDir}`);
 
     });
-
-    const cmdWithResponse = await this.queueCmd('sd-dir-read profiles 1 *.prof', connector);
-
-    const profiles = cmdWithResponse.response;
-
-    for (let profile of profiles) {
-
-        const readCmdWithResponse = await this.readFile(`profiles/${profile.name}`, false, connector);
-
-        profile.content = readCmdWithResponse.output;
-
-        const prof = profileIds.find((prof) => prof.profileName === profile.name);
-
-        if (prof) {
-
-            profile.active = true;
-            profile.id = prof.profileId;
-        }
-        else {
-
-            profile.active = false;
-        }
-    }
-
-    profileListReadResp.profiles = profiles;
-
-    return profileListReadResp;
 
 };

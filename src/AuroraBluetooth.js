@@ -3,7 +3,7 @@ import noble from 'noble';
 import keyBy from 'lodash/keyBy';
 import {sleep, promisify} from './util';
 import AuroraBluetoothParser from './AuroraBluetoothParser';
-import {BleAuroraService, BleAuroraChars, BleCmdStates, BLE_CMD_MAX_PACKET_LENGTH, BLE_CMD_MAX_PAYLOAD} from './AuroraConstants';
+import {BleAuroraService, BleAuroraChars, BleCmdStates, BLE_CMD_MAX_PACKET_LENGTH} from './AuroraConstants';
 
 const INIT_DELAY_MS = 5000;
 const DISCONNECT_RETRY_DELAY_MS = 3000;
@@ -33,6 +33,7 @@ export default class AuroraBluetooth extends EventEmitter {
         this._bluetoothParser.on('cmdResponseRead', this._onParseCmdResponseRead);
         this._bluetoothParser.on('cmdResponseWrite', this._onParseCmdResponseWrite);
         this._bluetoothParser.on('cmdInputRequested', this._onParseCmdInputRequested);
+        this._bluetoothParser.on('cmdOutputReady', this._onParseCmdOutputReady);
         this._bluetoothParser.on('auroraEvent', this._onParseAuroraEvent);
         this._bluetoothParser.on('streamData', this._onParseStreamData);
 
@@ -244,7 +245,7 @@ export default class AuroraBluetooth extends EventEmitter {
 
     }
 
-    async writeCmdInput(input) {
+    async writeCmdInput(data) {
 
         //check for error condition
         if (this._connectionState != AuroraBluetooth.ConnectionStates.CONNECTED_BUSY) {
@@ -264,7 +265,7 @@ export default class AuroraBluetooth extends EventEmitter {
             }
         }
 
-        return this._charWrite(this._cmdDataChar, input);
+        return this._charWrite(this._cmdDataChar, data);
     }
 
     _setConnectionState(connectionState) {
@@ -437,12 +438,6 @@ export default class AuroraBluetooth extends EventEmitter {
         noble.removeListener('stateChange', this._onAdapterStateChange);
     }
 
-    //Handles stream events
-    _onStreamData = (data, isNotification) => {
-
-
-    };
-
     _onAdapterStateChange = (state) => {
 
         if (state == 'poweredOn'){
@@ -525,7 +520,12 @@ export default class AuroraBluetooth extends EventEmitter {
 
     _onParseCmdInputRequested = () => {
 
-        this.emit('cmdInputRequested', (input) => this.writeCmdInput(input));
+        this.emit('cmdInputRequested');
+    };
+
+    _onParseCmdOutputReady = (output) => {
+
+        this.emit('cmdOutputReady', output);
     };
 
     _onParseAuroraEvent = (auroraEvent) => {

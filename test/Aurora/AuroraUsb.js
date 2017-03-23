@@ -13,6 +13,8 @@ const events = [
     'streamData',
     'log',
     'usbError',
+    'cmdInputRequested',
+    'cmdInputReady'
 ];
 
 const eventSpies = {};

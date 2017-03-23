@@ -32,15 +32,131 @@ export default class AuroraSerialParser extends EventEmitter {
         clearTimeout(this._cmdWatchdogTimer);
 
         this._cmd = null;
+        this._unparsedBuffer = null;
         this._cmdResponseParser.reset();
         this._cmdState = CmdStates.NO_CMD;
     }
 
-    parseLine(line) {
+    parseChunk(chunk) {
 
+        //received new data so clear any timeouts
         clearTimeout(this._cmdWatchdogTimer);
 
-        let match;
+        //don't do anything if chunk is empty
+        if (!chunk.length) {
+            return;
+        }
+
+        //set new timeout, which will get cleared if this
+        //line indicates that there is no more data expected
+        this._cmdWatchdogTimer = setTimeout(this._onCmdTimeout, 2000);
+
+        //pick up where we left off
+        this._unparsedBuffer = Buffer.isBuffer(this._unparsedBuffer) ? Buffer.concat([this._unparsedBuffer, chunk]) : chunk;
+
+        //if we aren't in the middle of processing output
+        //lets break this chunk into lines
+        if (this._cmdState != CmdStates.CMD_OUTPUT) {
+
+            while (this._unparsedBuffer && this._unparsedBuffer.length) {
+
+                //look for first newline
+                const newlineIndex = this._unparsedBuffer.indexOf('\n');
+
+                //no newline, so wait for the next chunk
+                if (newlineIndex == -1) {
+
+                    return;
+                }
+
+                //we must have a newline now so grab the line
+                let bufferLine = this._unparsedBuffer.slice(0, newlineIndex).toString().trim();
+
+                //and remove it from the unparsed buffer
+                this._unparsedBuffer = this._unparsedBuffer.slice(newlineIndex + 1);
+
+                //after trim, if no data is in line, bail
+                if (!bufferLine.length) {
+                    continue;
+                }
+
+                //we have a complete line, so pass it off
+                this.parseLine(bufferLine.toString());
+
+                //if we are now receiving output, we need to exit
+                //this loop
+                if (this._cmdState == CmdStates.CMD_OUTPUT) break;
+            }
+        }
+
+        //if we are here, we are currently receiving output.
+        //this is where things get tricky since we need to
+        //properly identify whether an output footer exists
+
+        const outputFooter = '\r\n++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++';
+
+        //while we have enough bytes to potentially identify the footer
+        while (this._unparsedBuffer.length >= outputFooter.length) {
+
+            //look for the footer
+            const footerStartIndex = this._unparsedBuffer.indexOf(outputFooter);
+
+            //didn't find full footer, so we consume as much as we can
+            if (footerStartIndex == -1) {
+
+                //determine where the first CR is
+                const firstCRIndex = this._unparsedBuffer.indexOf('\r');
+
+                //if we don't have one, we can safely consume the entire buffer
+                if (firstCRIndex == -1) {
+
+                    this.emit('cmdOutputReady', this._unparsedBuffer);
+                    this._unparsedBuffer = null;
+                    return;
+                }
+
+                //we have a CR, so see if we have enough bytes to guarantee the output footer
+                //hasn't started yet
+                if (this._unparsedBuffer.length >= firstCRIndex + outputFooter.length) {
+
+                    //consume everything up to and including the first CR
+                    this.emit('cmdOutputReady', this._unparsedBuffer.slice(0, firstCRIndex + 1));
+                    this._unparsedBuffer = this._unparsedBuffer.slice(firstCRIndex + 1);
+                    continue;
+                }
+
+                return;
+            }
+            //we found the footer!!
+            else {
+
+                //if the footer doesn't start at the
+                //beginning, we consume everything up to it
+                if (footerStartIndex) {
+
+                    //consume everything up to the footer
+                    this.emit('cmdOutputReady', this._unparsedBuffer.slice(0, footerStartIndex));
+                    this._unparsedBuffer = this._unparsedBuffer.slice(footerStartIndex);
+                }
+
+                //at this point we have the footer and it is at the beginning
+                //of the unparsed buffer so now we have to look for the footer
+                //end, which is the second set of \r\n
+                const footerEndIndex = this._unparsedBuffer.indexOf('\r\n', 2);
+
+                if (footerEndIndex == -1) return;
+
+                //we found the entire footer, so consume it all (including trailing new lines) and change the state
+                this._unparsedBuffer = this._unparsedBuffer.slice(footerEndIndex + 2);
+
+                this._cmdState = CmdStates.CMD_RESPONSE;
+
+                break;
+            }
+        }
+    }
+
+    parseLine(line) {
 
         switch (this._cmdState) {
 
@@ -55,7 +171,7 @@ export default class AuroraSerialParser extends EventEmitter {
                 }
 
                 //look for command prompt
-                match = line.match(/^# ([a-z-]+.*)$/i);
+                const match = line.match(/^# ([a-z-]+.*)$/i);
 
                 if (match){
 
@@ -65,11 +181,10 @@ export default class AuroraSerialParser extends EventEmitter {
                     };
 
                     this._cmdState = CmdStates.CMD_HEADER;
-
-                    this._cmdWatchdogTimer = setTimeout(this._onCmdTimeout, 1000);
                 }
                 else {
 
+                    clearTimeout(this._cmdWatchdogTimer);
                     this._parseNonCmdResponseLine(line);
                 }
 
@@ -90,27 +205,7 @@ export default class AuroraSerialParser extends EventEmitter {
 
                 break;
 
-            case CmdStates.CMD_OUTPUT :
-
-                this._cmdWatchdogTimer = setTimeout(this._onCmdTimeout, 1000);
-
-                //look for output footer
-                if (line[0] == '+' && line.match(/^[+]{64,}$/)){
-
-                    this._cmdState = CmdStates.CMD_RESPONSE;
-                }
-                //this must be output
-                else {
-
-                    //add back the newlines since this is raw output
-                    this._cmd.output += (this._cmd.output ? '\r\n' : '') + line;
-                }
-
-                break;
-
             case CmdStates.CMD_INPUT :
-
-                this._cmdWatchdogTimer = setTimeout(this._onCmdTimeout, 1000);
 
                 //look for input footer
                 if (line[0] == '.' && line.match(/^[.]{64,}$/)){
@@ -121,8 +216,6 @@ export default class AuroraSerialParser extends EventEmitter {
                 break;
 
             case CmdStates.CMD_ERROR :
-
-                this._cmdWatchdogTimer = setTimeout(this._onCmdTimeout, 1000);
 
                 //look for error footer
                 if (line[0] == '~' && line.match(/^[~]{64,}$/)){
@@ -157,13 +250,16 @@ export default class AuroraSerialParser extends EventEmitter {
                 //look for output header
                 if (line[0] == '+' && line.match(/^[+]{64,}$/)){
 
-                    this._cmd.output = '';
                     this._cmdState = CmdStates.CMD_OUTPUT;
                 }
                 //look for input header
                 else if (line[0] == '.' && line.match(/^[.]{64,}$/)){
 
                     this._cmdState = CmdStates.CMD_INPUT;
+
+                    clearTimeout(this._cmdWatchdogTimer);
+                    this._cmdWatchdogTimer = setTimeout(this._onCmdTimeout, 5*60*1000);
+
                     this.emit('cmdInputRequested');
                 }
                 //look for error header
@@ -174,16 +270,15 @@ export default class AuroraSerialParser extends EventEmitter {
                     this._cmdState = CmdStates.CMD_ERROR;
                 }
                 //look for end of response
-                else if (match = line.match(/^[-]{64,}$/)){
+                else if (line.match(/^[-]{64,}$/)){
 
+                    clearTimeout(this._cmdWatchdogTimer);
                     this._cmd.response = this._cmdResponseParser.getResponse();
                     this.emit('cmdResponse', this._cmd);
                     this._cmdState = CmdStates.NO_CMD;
                 }
                 //neither, so this is normal command response
                 else if (!this._cmd.error) {
-
-                    this._cmdWatchdogTimer = setTimeout(this._onCmdTimeout, 1000);
 
                     try {
 
@@ -197,6 +292,7 @@ export default class AuroraSerialParser extends EventEmitter {
 
                 break;
         }
+
     }
 
     _triggerCmdError = (message) => {

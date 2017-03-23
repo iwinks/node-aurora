@@ -2,7 +2,7 @@ exports.spiesCalled = function(t, events, eventSpies, omitEvents = []){
 
     for (const event of events) {
 
-        if (omitEvents.includes(event)) return;
+        if (omitEvents.includes(event)) continue;
 
         t.assert(eventSpies[event].called, `${event} event called.`);
 
@@ -13,7 +13,7 @@ exports.spiesCalledOnce = function(t, events, eventSpies, omitEvents = []){
 
     for (const event of events) {
 
-        if (omitEvents.includes(event)) return;
+        if (omitEvents.includes(event)) continue;
 
         t.assert(eventSpies[event].calledOnce, `${event} event called once.`);
     }
@@ -23,7 +23,7 @@ exports.spiesNeverCalled = function(t, events, eventSpies, omitEvents = []){
 
     for (const event of events) {
 
-        if (omitEvents.includes(event)) return;
+        if (omitEvents.includes(event)) continue;
 
         t.assert(!eventSpies[event].called, `${event} never called.`);
     }
@@ -33,7 +33,7 @@ exports.spiesCalledOnceWith = function(t, events, eventSpies, args, omitEvents =
 
     for (const event of events){
 
-        if (omitEvents.includes(event)) return;
+        if (omitEvents.includes(event)) continue;
 
         for (const arg of args){
 
@@ -46,7 +46,7 @@ exports.spiesNeverCalledWith = function(t, events, eventSpies, args, omitEvents 
 
     for (const event of events){
 
-        if (omitEvents.includes(event)) return;
+        if (omitEvents.includes(event)) continue;
 
         for (const arg of args){
 

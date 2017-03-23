@@ -1,11 +1,11 @@
 import AuroraTransformObject from './AuroraTransformObject';
 import AuroraSessionParser from './AuroraSessionParser';
 
-module.exports = async function(destPath, connector = 'any') {
+module.exports = async function(connector = 'any') {
 
     const sessions = [];
 
-    const dirReadCmd = await this.queueCmd('sd-dir-read sessions 0 *@*', connector);
+    const dirReadCmd = await this.queueCmd('sd-dir-read sessions', connector);
 
     const sessionDirs = dirReadCmd.response;
 
@@ -35,6 +35,7 @@ module.exports = async function(destPath, connector = 'any') {
         }
 
         let session = {
+            name: sessionDir.name.split('/').pop(),
             auroraDir: sessionDir.name,
             streams: []
         };

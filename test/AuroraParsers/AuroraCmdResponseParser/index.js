@@ -2,7 +2,7 @@ import test from 'tape';
 import fs from 'fs';
 import path from 'path';
 import readline from 'readline';
-import AuroraCommandResponseParser from '../../../lib/AuroraCommandResponseParser';
+import AuroraCmdResponseParser from '../../../lib/AuroraCmdResponseParser';
 
 test('Testing response line parsing (success cases)...', (t) => {
 
@@ -11,12 +11,20 @@ test('Testing response line parsing (success cases)...', (t) => {
         {
             inputFile: 'CmdResponseObjectInput.mock',
             outputObject: require('./CmdResponseObjectOutput.mock').default,
-            name: 'Object'
+            name: 'Object',
+            parseAs: 'detect'
         },
         {
             inputFile: 'CmdResponseTableInput.mock',
             outputObject: require('./CmdResponseTableOutput.mock').default,
-            name: 'Table'
+            name: 'Table',
+            parseAs: 'detect'
+        },
+        {
+            inputFile: 'CmdResponseTableCondensedInput.mock',
+            outputObject: require('./CmdResponseTableCondensedOutput.mock').default,
+            name: 'Table (condensed)',
+            parseAs: 'table'
         }
     ];
 
@@ -28,9 +36,20 @@ test('Testing response line parsing (success cases)...', (t) => {
                 input: fs.createReadStream(path.join(__dirname, responseType.inputFile))
             });
 
-            const parser = new AuroraCommandResponseParser();
+            const parser = new AuroraCmdResponseParser();
 
-            lineReader.on('line', line => parser.parseDetect(line));
+            if (responseType.parseAs == 'object'){
+
+                lineReader.on('line', line => parser.parseObject(line));
+            }
+            else if (responseType.parseAs == 'table'){
+
+                lineReader.on('line', line => parser.parseTable(line));
+            }
+            else {
+
+                lineReader.on('line', line => parser.parseDetect(line));
+            }
 
             lineReader.on('close', () => {
 

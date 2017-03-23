@@ -5,8 +5,7 @@ import {sleep, promisify} from './util';
 
 const serialOptions = {
 
-    baudrate: 38400,
-    parser: SerialPort.parsers.readline('\r\n')
+    baudrate: 38400
 };
 
 const CONNECT_RETRY_DELAY_MS = 1500;
@@ -61,6 +60,7 @@ export default class AuroraUsb extends EventEmitter {
         this._serialParser.on('streamData', this._onParseStreamData);
         this._serialParser.on('streamTimestamp', this._onParseStreamTimestamp);
         this._serialParser.on('cmdInputRequested', this._onParseCmdInputRequested);
+        this._serialParser.on('cmdOutputReady', this._onParseCmdOutputReady);
         this._serialParser.on('parseError', this._onParseError);
     }
 
@@ -226,7 +226,7 @@ export default class AuroraUsb extends EventEmitter {
 
             });
 
-            cmd = cmd.trim() + '\r\n';
+            cmd = cmd.trim() + '\r';
 
             this._write(cmd).catch(error => {
 
@@ -240,7 +240,7 @@ export default class AuroraUsb extends EventEmitter {
         });
     }
 
-    async writeCmdInput(input){
+    async writeCmdInput(data){
 
         //check for error condition
         if (this._connectionState != AuroraUsb.ConnectionStates.CONNECTED_BUSY) {
@@ -259,7 +259,19 @@ export default class AuroraUsb extends EventEmitter {
             }
         }
 
-        return await this._write(input);
+        //process at most 128 bytes at a time
+        for (let i = 0 ; i < (data.length + 128); i += 128) {
+
+            const packet = data.slice(i, (i + 128));
+
+            //if this slice is empty, nothing to do
+            if (!packet.length) break;
+
+            //remember, this happens synchronously
+            await this._write(packet);
+        }
+
+        return data;
     }
 
     _setConnectionState(connectionState) {
@@ -290,7 +302,7 @@ export default class AuroraUsb extends EventEmitter {
 
             this._serialPort.removeAllListeners();
 
-            this._serialPort.on('data', this._onSerialDataLine);
+            this._serialPort.on('data', this._onSerialData);
             this._serialPort.on('close', this._onSerialDisconnect);
             this._serialPort.on('error', this._onSerialError);
         }
@@ -347,9 +359,9 @@ export default class AuroraUsb extends EventEmitter {
         this._setConnectionState(AuroraUsb.ConnectionStates.DISCONNECTED);
     };
 
-    _onSerialDataLine = (line) => {
+    _onSerialData = (chunk) => {
 
-        this._serialParser.parseLine(line);
+        this._serialParser.parseChunk(chunk);
     };
 
     _onParseLog = (log) => {
@@ -375,7 +387,12 @@ export default class AuroraUsb extends EventEmitter {
 
     _onParseCmdInputRequested = () => {
 
-        this.emit('cmdInputRequested', (input) => this.writeCmdInput(input));
+        this.emit('cmdInputRequested');
+    };
+
+    _onParseCmdOutputReady = (output) => {
+
+        this.emit('cmdOutputReady', output);
     };
 
     _onParseStreamTimestamp = (streamTimestamp) => {

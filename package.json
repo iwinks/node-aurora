@@ -8,7 +8,7 @@
     "test-parsers": "npm run compile && tape -r babel-register \"test/AuroraParsers\" | tap-difflet",
     "test-aurora": "npm run compile && tape -r babel-register \"test/Aurora\" | tap-difflet",
     "compile": "babel --plugins transform-runtime -d lib/ src/",
-    "prepublish": "npm run test "
+    "prepublish": "npm run test-parsers"
   },
   "repository": {
     "type": "git",
@@ -43,6 +43,7 @@
   "dependencies": {
     "babel-runtime": "^6.9.0",
     "binary-parser": "iwinks/binary-parser",
+    "buffer-crc32": "^0.2.13",
     "drivelist": "^5.0.10",
     "eject-media": "^0.0.3",
     "flat": "^2.0.0",
@@ -50,7 +51,9 @@
     "mkdirp": "^0.5.1",
     "moment": "^2.13.0",
     "noble": "^1.8.0",
+    "node-fetch": "^1.6.3",
     "serialport": "^4.0.7",
+    "split": "^1.0.0",
     "usb-detection": "^1.4.0"
   }
 }

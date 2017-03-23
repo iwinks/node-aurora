@@ -1,11 +1,16 @@
 import fs from 'fs';
-import {promisify} from './util';
+import fetch from 'node-fetch';
 
-module.exports = function(srcPath, destPath, options={}) {
+module.exports = function(srcPath, destPath, rename = false) {
 
-    return promisify(fs.readFile, fs)(srcPath).then((data) => {
+    if (srcPath.match(/https?:\/\//i)){
 
-        return this.writeFile(destPath, data);
-    });
+        return fetch(srcPath).then(res => {
 
+            return this.writeFile(destPath, res.body, rename);
+
+        });
+    }
+
+    return this.writeFile(destPath, fs.createReadStream(srcPath));
 };

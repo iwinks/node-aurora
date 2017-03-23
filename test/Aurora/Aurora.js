@@ -3,16 +3,14 @@ import aurora from '../../lib/Aurora';
 import sinon from 'sinon';
 import path from 'path';
 
-import {spiesCalledOnce, spiesNeverCalled, assertCommand} from '../util';
+import {spiesCalledOnce, spiesNeverCalled, assertCommand, spiesCalled} from '../util';
 
 const events = [
 
-    'usbConnected',
-    'usbDisconnected',
-    'bluetoothConnected',
-    'bluetoothDisconnected',
-    'msdConnected',
-    'msdDisconnected',
+    'usbConnectionChange',
+    'bluetoothConnectionChange',
+    'flashConnectionChange',
+    'msdConnectionChange',
     'auroraEvent',
     'log',
     'streamData',
@@ -82,11 +80,12 @@ test('Testing Aurora usb connectivity...', t => {
 
             t.pass(`Aurora connected over usb. Proceeding with usb tests.`);
 
-            spiesCalledOnce(t, ['usbConnected'], eventSpies);
-            spiesNeverCalled(t, events, eventSpies, ['usbConnected','log']);
+            spiesCalledOnce(t, ['usbConnectionChange'], eventSpies);
+            spiesNeverCalled(t, events, eventSpies, ['usbConnectionChange','log']);
 
             usbTests.reduce((prevTest, nextTest) => {
 
+                resetTest();
                 return prevTest.then(nextTest(t)).catch(t.fail);
 
             }, Promise.resolve());
@@ -100,6 +99,7 @@ test('Testing Aurora usb connectivity...', t => {
 
 });
 
+
 test('Testing Aurora bluetooth connectivity...', (t) => {
 
     Promise.resolve()
@@ -109,18 +109,20 @@ test('Testing Aurora bluetooth connectivity...', (t) => {
 
             t.pass(`Aurora master connected over bluetooth. Proceeding with bluetooth tests.`);
 
-            spiesCalledOnce(t, ['bluetoothConnected'], eventSpies);
-            spiesNeverCalled(t, events, eventSpies, ['bluetoothConnected','log']);
+            spiesCalledOnce(t, ['bluetoothConnectionChange'], eventSpies);
+            spiesNeverCalled(t, events, eventSpies, ['bluetoothConnectionChange','log']);
 
             bluetoothTests.reduce((prevTest, nextTest) => {
 
+                resetTest();
                 return prevTest.then(nextTest(t)).catch(t.fail);
 
             }, Promise.resolve());
 
         }).catch((e) => {
-            console.log(e);
+
             t.pass('Aurora not connected over bluetooth. Skipping bluetooth tests.');
+            
         }).then(() => t.end());
 
 });
@@ -134,11 +136,20 @@ test('Final test.', (t) => {
 });
 
 
+
 auroraTest('any', 'Testing generic command execution over ${connector}...', (t, connector) => {
 
     const testCmd = (cmdLine, responseType, isError = false) => {
 
-        return aurora.queueCmd(cmdLine, connector).then(cmd => assertCommand(t, cmd, responseType, isError));
+        return aurora.queueCmd(cmdLine, connector)
+            .then(cmd => assertCommand(t, cmd, responseType, isError))
+            .catch(error => {
+
+                if (isError) return Promise.resolve();
+
+                return Promise.reject(error);
+
+            });
     };
 
     resetTest();
@@ -151,24 +162,21 @@ auroraTest('any', 'Testing generic command execution over ${connector}...', (t, 
 
 });
 
-
+/*
 auroraTest('usb', 'Testing MSD mode...', (t) => {
 
-    resetTest();
-
     return Promise.resolve()
-        .then(() => aurora.connectMsd())
-        .then(() => aurora.disconnectMsd())
+        .then(() => aurora.attachMsd())
+        .then(() => aurora.detachMsd())
         .then(() => {
 
-            spiesCalledOnce(t, ['msdConnected', 'msdDisconnected', 'usbDisconnected'], eventSpies);
-            spiesNeverCalled(t, ['bluetoothConnected','bluetoothDisconnected','usbConnected'], eventSpies);
+            spiesCalled(t, ['msdConnectionChange', 'usbConnectionChange'], eventSpies);
+            spiesNeverCalled(t, ['bluetoothConnectionChange'], eventSpies);
 
         }).then(() => aurora.connectUsb());
 
 });
 
-/*
 auroraTest('usb', 'Testing usb autoconnect...', (t) => {
 
     resetTest();
@@ -183,7 +191,7 @@ auroraTest('usb', 'Testing usb autoconnect...', (t) => {
 
                 case 1:
                     t.pass('Auto connected from disconnection state.');
-                    aurora.connectMsd().then(() => aurora.disconnectMsd()).catch(reject);
+                    aurora.attachMsd().then(() => aurora.detachMsd()).catch(reject);
                     break;
 
                 case 2:
@@ -204,21 +212,16 @@ auroraTest('usb', 'Testing usb autoconnect...', (t) => {
     });
 
 });
-*/
 
 
 auroraTest('any', 'Testing Aurora syncTime command over ${connector}...', (t, connector) => {
-
-    resetTest();
 
     return aurora.syncTime(connector);
 
 });
 
-
+*/
 auroraTest('any', 'Testing Aurora downloadFile command over ${connector}...', (t, connector) => {
-
-    resetTest();
 
     return aurora.downloadFile('profiles/rem-stim.prof', path.join(__dirname, 'rem-stim.prof'));
 
@@ -226,8 +229,6 @@ auroraTest('any', 'Testing Aurora downloadFile command over ${connector}...', (t
 
 
 auroraTest('any', 'Testing Aurora uploadFile command over ${connector}...', (t, connector) => {
-
-    resetTest();
 
     return aurora.uploadFile(path.join(__dirname, 'rem-stim.prof'), 'upload.test');
 
@@ -264,3 +265,32 @@ auroraTest('bluetooth', 'Testing bluetooth auto connect...', (t) => {
 
 });
 */
+
+/*
+auroraTest('any', 'Testing Aurora getProfiles and setProfiles command over ${connector}...', (t, connector) => {
+
+    return aurora.getProfiles(connector).then((getCmd) => {
+
+        getCmd.profiles.push(getCmd.profiles.slice()[0]);
+
+        return aurora.setProfiles(getCmd.profiles, connector);
+
+    });
+
+});
+
+*/
+
+auroraTest('any', 'Testing Aurora getSessions command over ${connector}...', (t, connector) => {
+
+    return aurora.getSessions(connector).then((sessions) => {
+
+        return Promise.all(sessions.map((session) => aurora.downloadSession(session, path.join(__dirname, 'sessions', session.name), connector)));
+
+    }).catch(console.log);
+
+});
+
+
+
+

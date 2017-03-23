@@ -34,20 +34,11 @@ const cmdResponseError = {
     }
 };
 
-const cmdResponseWithOutput = Object.assign({}, cmdResponseSuccess, {
-    output: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
-});
-
-const cmdResponseWithInput = Object.assign({}, cmdResponseSuccess, {
-    input: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
-});
-
-
 const events = [
     'cmdResponse',
     'cmdInputRequested',
     'cmdResponseRead',
-    'cmdResponseWrite',
+    'cmdOutputReady',
     'auroraEvent',
     'streamData',
     'parseError'
@@ -57,11 +48,14 @@ const eventSpies = {};
 
 events.forEach(event => eventSpies[event] = new sinon.spy());
 
+const parser = new AuroraBluetoothParser();
+
 const bluetoothTest = (name, inputFile, runTest) => {
 
     test(name, t => {
 
-        const parser = new AuroraBluetoothParser();
+        parser.reset();
+        parser.removeAllListeners();
 
         for (const event of events) {
 
@@ -102,13 +96,11 @@ const bluetoothTest = (name, inputFile, runTest) => {
                     break;
 
                 case 'output':
-                    parser.onCmdStatusCharNotification(Buffer.from([BleCmdStates.CMD_OUTPUT_READY, response.length]));
-                    parser._cmdDataReceiveOutput(response);
+                    parser.onCmdOutputCharNotification(response);
                     break;
 
                 case 'input':
                     parser.onCmdStatusCharNotification(Buffer.from([BleCmdStates.CMD_INPUT_REQUESTED]));
-                    parser.fillCommandInputBuffer(response);
                     break;
 
                 case 'status':
@@ -225,19 +217,17 @@ bluetoothTest('Testing bluetooth parse error...', 'BluetoothParseError.mock', (t
 
 });
 
-
 bluetoothTest('Testing bluetooth parsing of command with output response...', 'BluetoothCmdResponseWithOutput.mock', t => {
 
     spiesCalledOnce(t, ['cmdResponse'], eventSpies);
-    spiesCalled(t, ['cmdResponseRead'], eventSpies);
+    spiesCalled(t, ['cmdResponseRead','cmdOutputReady'], eventSpies);
 
     if (eventSpies.cmdResponse.calledOnce) {
-        const filteredResponse = pick(eventSpies.cmdResponse.args[0][0], Object.keys(cmdResponseWithOutput));
-        filteredResponse.output = filteredResponse.output.toString('ascii');
-        t.deepEqual(cmdResponseWithOutput, filteredResponse, "'cmdResponse' event received correct response with output.");
+        const filteredResponse = pick(eventSpies.cmdResponse.args[0][0], Object.keys(cmdResponseSuccess));
+        t.deepEqual(cmdResponseSuccess, filteredResponse, "'cmdResponse' event received correct response.");
     }
 
-    spiesNeverCalled(t, events, eventSpies, ['cmdResponse','cmdResponseRead']);
+    spiesNeverCalled(t, events, eventSpies, ['cmdResponse','cmdResponseRead','cmdOutputReady']);
 
     t.end();
 
@@ -247,19 +237,19 @@ bluetoothTest('Testing bluetooth parsing of command with output response...', 'B
 bluetoothTest('Testing bluetooth parsing of command with input response...', 'BluetoothCmdResponseWithInput.mock', t => {
 
     spiesCalledOnce(t, ['cmdResponse'], eventSpies);
-    spiesCalled(t, ['cmdResponseRead','cmdResponseWrite','cmdInputRequested'], eventSpies);
+    spiesCalled(t, ['cmdResponseRead','cmdInputRequested'], eventSpies);
 
     if (eventSpies.cmdResponse.calledOnce) {
-        const filteredResponse = pick(eventSpies.cmdResponse.args[0][0], Object.keys(cmdResponseWithInput));
-        filteredResponse.input = filteredResponse.input.toString('ascii');
-        t.deepEqual(cmdResponseWithInput, filteredResponse, "'cmdResponse' event received correct response with input.");
+        const filteredResponse = pick(eventSpies.cmdResponse.args[0][0], Object.keys(cmdResponseSuccess));
+        t.deepEqual(cmdResponseSuccess, filteredResponse, "'cmdResponse' event received correct response.");
     }
 
-    spiesNeverCalled(t, events, eventSpies, ['cmdResponse','cmdResponseRead','cmdResponseWrite','cmdInputRequested']);
+    spiesNeverCalled(t, events, eventSpies, ['cmdResponse','cmdResponseRead','cmdInputRequested']);
 
     t.end();
 
 });
+
 
 bluetoothTest('Testing bluetooth parsing of the perfect storm...', 'BluetoothKitchenSink.mock', t => {
 
@@ -267,7 +257,7 @@ bluetoothTest('Testing bluetooth parsing of the perfect storm...', 'BluetoothKit
 
     t.assert(cmdResponse.callCount == 4, "'cmdResponse' event fired four times.");
 
-    spiesCalled(t, ['cmdResponseRead','cmdResponseWrite','cmdInputRequested'], eventSpies);
+    spiesCalled(t, ['cmdResponseRead','cmdInputRequested','cmdOutputReady'], eventSpies);
 
     let filteredResponse;
 
@@ -278,8 +268,8 @@ bluetoothTest('Testing bluetooth parsing of the perfect storm...', 'BluetoothKit
         t.deepEqual(cmdResponseSuccess, filteredResponse, "'cmdResponse' event received first correct response.");
 
         //2nd call success w/data
-        filteredResponse = pick(cmdResponse.args[1][0], Object.keys(cmdResponseWithOutput));
-        t.deepEqual(cmdResponseWithOutput, filteredResponse, "'cmdResponse' event received correct success response without output.");
+        filteredResponse = pick(cmdResponse.args[1][0], Object.keys(cmdResponseSuccess));
+        t.deepEqual(cmdResponseSuccess, filteredResponse, "'cmdResponse' event received correct success response without output.");
 
         //3rd call error
         filteredResponse = pick(cmdResponse.args[2][0], Object.keys(cmdResponseError));
@@ -288,7 +278,6 @@ bluetoothTest('Testing bluetooth parsing of the perfect storm...', 'BluetoothKit
         //4th call contains table
         const fourthSuccess = cmdResponse.args[3][0];
         t.assert(fourthSuccess.error === false && Array.isArray(fourthSuccess.response) && typeof fourthSuccess.response[0] == 'object', "'cmdResponse' event received last correct response.");
-        t.assert(fourthSuccess.input === cmdResponseWithInput.input, "'cmdResponse' event received correct input with response.");
     }
 
     t.assert(auroraEvent.callCount == 5, "'auroraEvent' event fired 5 times.");

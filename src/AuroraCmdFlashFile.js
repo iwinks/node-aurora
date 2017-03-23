@@ -1,11 +1,12 @@
 import fs from 'fs';
 import {promisify} from './util';
 
-module.exports = function(srcPath, destPath) {
+module.exports = function(fwPath, fwVersion = false) {
 
-    return promisify(fs.readFile, fs)(srcPath).then((data) => {
+    return this.uploadFile(fwPath, 'aurora.hex').then(() => {
 
-        return this.writeFile(destPath, data);
+        return this.flash('aurora.hex', fwVersion);
+
     });
 
 };

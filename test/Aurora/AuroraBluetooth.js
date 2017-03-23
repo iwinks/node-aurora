@@ -11,6 +11,8 @@ const events = [
     'auroraEvent',
     'streamData',
     'bluetoothError',
+    'cmdInputRequested',
+    'cmdOutputReady'
 ];
 
 const eventSpies = {};

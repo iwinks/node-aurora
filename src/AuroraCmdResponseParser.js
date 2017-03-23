@@ -1,6 +1,6 @@
 import camelCase from 'lodash/camelCase';
 import zipObject from 'lodash/zipObject';
-import moment from 'moment';
+import {parseValueString} from './util';
 
 const ResponseStates = {
 
@@ -8,14 +8,6 @@ const ResponseStates = {
     OBJECT: 1,
     TABLE: 2,
     OUTPUT: 3
-};
-
-const ResponseTableStates = {
-
-    INIT: 0,
-    COLUMNS: 2,
-    HEADER: 3,
-    DATA: 4
 };
 
 export default class AuroraCmdResponseParser {
@@ -29,13 +21,12 @@ export default class AuroraCmdResponseParser {
 
         this.response = null;
         this.responseState = ResponseStates.INIT;
-        this.responseTableState = ResponseTableStates.INIT;
         this.responseTableCols = [];
     }
 
     parseObject(line)
     {
-        if (line.length > 128) throw new Error('Line exceeded max length of 128 bytes.');
+        if (line.length > 120) throw new Error('Line exceeded max length of 120 bytes.');
 
         line = line.trim();
 
@@ -52,18 +43,23 @@ export default class AuroraCmdResponseParser {
         const [objKey, ...objValueArray] = line.split(':');
         const objValue = objValueArray.join(':');
 
-        this.response[camelCase(objKey.trim())] = this._parseValue(objValue);
+        this.response[camelCase(objKey.trim())] = parseValueString(objValue);
     }
 
     parseTable(line){
 
-        if (line.length > 128) throw new Error('Line exceeded max length of 128 bytes.');
+        if (line.length > 120) throw new Error('Line exceeded max length of 120 bytes.');
 
         line = line.trim();
 
         if (!line.length) return;
 
         if (this._isTableDivider(line)) return;
+
+        if (line[0] == '|' && line[line.length-1] == '|'){
+
+            line = line.slice(1,-1);
+        }
 
         //this must be the columns
         if (this.responseState == ResponseStates.INIT){
@@ -77,13 +73,13 @@ export default class AuroraCmdResponseParser {
 
         if (this.responseState != ResponseStates.TABLE) throw new Error('Invalid response state to parse a table.');
 
-        this.response.push(zipObject(this.responseTableCols, line.split('|').map(this._parseValue)));
+        this.response.push(zipObject(this.responseTableCols, line.split('|').map(parseValueString)));
 
     }
 
     parseDetect(line) {
 
-        if (line.length > 128) throw new Error('Line exceeded max length of 128 bytes.');
+        if (line.length > 120) throw new Error('Line exceeded max length of 120 bytes.');
 
         line = line.trim();
 
@@ -136,50 +132,13 @@ export default class AuroraCmdResponseParser {
 
                 return ResponseStates.TABLE;
             }
-            else if (line.indexOf(':') > 0 && line.length > 2){
+            else if (line.indexOf(':') > 0){
 
                 return ResponseStates.OBJECT;
             }
         }
 
         return ResponseStates.INIT;
-    }
-
-    _parseValue(value) {
-
-        value = value.trim();
-
-        const valWithoutNumericSymbols = value.replace(/[$%,]+|(ms$)/g,'');
-
-        if (!isNaN(valWithoutNumericSymbols)) {
-
-            return +valWithoutNumericSymbols;
-        }
-
-        let date = moment(value, [
-            moment.ISO_8601,
-            "YYYY-MM-DD HH:mm:ss:SSS",
-            "MMM  D YYYY - HH:mm:ss",
-            "MMM DD YYYY - HH:mm:ss"
-        ], true);
-
-        if (date.isValid()){
-
-            return +date;
-        }
-
-        const valueUC = value.toUpperCase();
-
-        if (valueUC === 'TRUE' || valueUC === 'ON' || valueUC === 'ACTIVE') {
-
-            return true;
-        }
-        else if (valueUC === 'FALSE' || valueUC === 'OFF' || valueUC === 'INACTIVE') {
-
-            return false;
-        }
-
-        return value;
     }
 
 

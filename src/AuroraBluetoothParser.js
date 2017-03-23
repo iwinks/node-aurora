@@ -1,6 +1,5 @@
 import EventEmitter from 'events';
-import Stream from 'stream';
-import {BLE_CMD_MAX_PAYLOAD, BleCmdStates, DataTypes, STREAM_ID_MAX, EVENT_ID_MAX, StreamIdsToNames, EventIdsToNames} from './AuroraConstants';
+import {BleCmdStates, DataTypes, STREAM_ID_MAX, EVENT_ID_MAX, StreamIdsToNames, EventIdsToNames} from './AuroraConstants';
 import AuroraCmdResponseParser from './AuroraCmdResponseParser';
 
 
@@ -12,8 +11,6 @@ export default class AuroraBluetoothParser extends EventEmitter {
 
         this._cmdResponseParser = new AuroraCmdResponseParser();
 
-        this._cmdWatchdogTimer = null;
-
         this.reset();
     }
 
@@ -23,10 +20,7 @@ export default class AuroraBluetoothParser extends EventEmitter {
 
         this._cmd = null;
         this._cmdResponseParser.reset();
-        this._cmdOutputBuffers = [];
         this._cmdState = BleCmdStates.IDLE;
-
-
     }
 
     setCmd(cmd) {
@@ -170,13 +164,15 @@ export default class AuroraBluetoothParser extends EventEmitter {
 
         this._cmdState = statusBuffer[0];
 
+        clearTimeout(this._cmdWatchdogTimer);
+
+        this._cmdWatchdogTimer = setTimeout(this._onCmdTimeout, 2000);
+
         if (this._cmdState != BleCmdStates.IDLE && !this._cmd){
 
             this.emit('parseError', 'Invalid status change. No command set.');
             return;
         }
-
-        clearTimeout(this._cmdWatchdogTimer);
 
         switch (this._cmdState) {
 
@@ -187,11 +183,6 @@ export default class AuroraBluetoothParser extends EventEmitter {
 
                     this._cmd.response = this._cmdResponseParser.getResponse();
                     this._cmd.error = statusBuffer[1] !== 0;
-
-                    if (this._cmdOutputBuffers.length) {
-
-                        this._cmd.output = Buffer.concat(this._cmdOutputBuffers).toString('utf8');
-                    }
 
                     this.emit('cmdResponse', this._cmd);
                 }
@@ -219,6 +210,7 @@ export default class AuroraBluetoothParser extends EventEmitter {
             case BleCmdStates.CMD_INPUT_REQUESTED:
 
                 this.emit('cmdInputRequested');
+                clearTimeout(this._cmdWatchdogTimer);
 
                 break;
 
@@ -228,21 +220,13 @@ export default class AuroraBluetoothParser extends EventEmitter {
                 break;
         }
 
-        this._cmdWatchdogTimer = setTimeout(this._onCmdTimeout, 2000);
     }
 
     onCmdOutputCharNotification(output){
 
+        this.emit('cmdOutputReady', output);
+
         clearTimeout(this._cmdWatchdogTimer);
-
-        if (!this._cmd){
-
-            this.emit('parseError', 'Received command output while not processing a command.');
-            return;
-        }
-
-        this._cmdOutputBuffers.push(output);
-
         this._cmdWatchdogTimer = setTimeout(this._onCmdTimeout, 2000);
     }
 
