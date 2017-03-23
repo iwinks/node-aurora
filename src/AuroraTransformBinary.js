@@ -1,32 +1,16 @@
 import Stream from "stream";
-import _ from 'lodash';
 import {Parser} from "binary-parser";
 import AuroraConstants from './AuroraConstants';
 
-export default class AuroraCmdTransformBinary extends Stream.Transform {
+export default class AuroraTransformBinary extends Stream.Transform {
 
-    static defaultOptions = {
-        dataType: AuroraConstants.DataTypes.UINT8,
-        parseType: undefined,
-        parseTypeLength: undefined
-    };
-
-
-    constructor(options) {
+    constructor(dataType = AuroraConstants.DataTypes.UINT8) {
 
         super({encoding: null});
 
-        this.options = _.defaultsDeep(options, AuroraCmdTransformBinary.defaultOptions);
-
-        if (typeof this.options.parseType == 'undefined') {
-
-            this.options.parseType = this._getParseTypeFromDataType(this.options.dataType);
-        }
-
-        if (typeof this.options.parseTypeLength == 'undefined') {
-
-            this.options.parseTypeLength = this._getParseTypeLengthFromDataType(this.options.dataType);
-        }
+        this.dataType = dataType;
+        this.parseType = this._getParseTypeFromDataType(dataType);
+        this.parseTypeLength = this._getParseTypeLengthFromDataType(dataType);
 
         this.parser = new Parser();
 
@@ -34,12 +18,9 @@ export default class AuroraCmdTransformBinary extends Stream.Transform {
         this.hasData = false;
 
         this.parser.array('values', {
-            type: this.options.parseType,
+            type: this.parseType,
             readUntil: 'eof',
-            formatter: function(values) {
-                
-                return values.join(',');
-            }
+            formatter: (values) => values.join(',')
         });
     }
 
@@ -57,14 +38,14 @@ export default class AuroraCmdTransformBinary extends Stream.Transform {
             this.leftoverBuffer = null;
         }
 
-        if (respChunk.length < this.options.parseTypeLength) {
+        if (respChunk.length < this.parseTypeLength) {
 
             this.leftoverBuffer = respChunk;
             done();
             return;
         }
 
-        const numBytesLeftover = respChunk.length % this.options.parseTypeLength;
+        const numBytesLeftover = respChunk.length % this.parseTypeLength;
 
         let parsedChunk;
 
