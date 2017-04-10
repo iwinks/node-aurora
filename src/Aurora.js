@@ -151,7 +151,7 @@ class Aurora extends EventEmitter {
         //the Aurora to start advertising aggressively
         if (this.isUsbConnected()){
 
-            this.queueCmd('ble-advert-start', 'usb');
+            this.queueCmd('ble-reset', 'usb');
         }
 
         if (this._auroraBluetooth.isConnecting()){
@@ -680,7 +680,7 @@ Object.defineProperty(Aurora.prototype, 'flashFile', {value: require('./AuroraCm
 Object.defineProperty(Aurora.prototype, 'getProfiles', {value: require('./AuroraCmdGetProfiles')});
 Object.defineProperty(Aurora.prototype, 'setProfiles', {value: require('./AuroraCmdSetProfiles')});
 Object.defineProperty(Aurora.prototype, 'getSessions', {value: require('./AuroraCmdGetSessions')});
-Object.defineProperty(Aurora.prototype, 'downloadSession', {value: require('./AuroraCmdDownloadSession')});
+Object.defineProperty(Aurora.prototype, 'downloadStream', {value: require('./AuroraCmdDownloadStream')});
 
 export default new Aurora();
 

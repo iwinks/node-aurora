@@ -213,6 +213,7 @@ auroraTest('usb', 'Testing usb autoconnect...', (t) => {
 
 });
 
+*/
 
 auroraTest('any', 'Testing Aurora syncTime command over ${connector}...', (t, connector) => {
 
@@ -220,7 +221,7 @@ auroraTest('any', 'Testing Aurora syncTime command over ${connector}...', (t, co
 
 });
 
-*/
+
 auroraTest('any', 'Testing Aurora downloadFile command over ${connector}...', (t, connector) => {
 
     return aurora.downloadFile('profiles/rem-stim.prof', path.join(__dirname, 'rem-stim.prof'));

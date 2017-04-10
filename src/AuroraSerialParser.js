@@ -49,7 +49,7 @@ export default class AuroraSerialParser extends EventEmitter {
 
         //set new timeout, which will get cleared if this
         //line indicates that there is no more data expected
-        this._cmdWatchdogTimer = setTimeout(this._onCmdTimeout, 2000);
+        this._cmdWatchdogTimer = setTimeout(this._onCmdTimeout, 10000);
 
         //pick up where we left off
         this._unparsedBuffer = Buffer.isBuffer(this._unparsedBuffer) ? Buffer.concat([this._unparsedBuffer, chunk]) : chunk;

@@ -1,5 +1,6 @@
 import AuroraTransformObject from './AuroraTransformObject';
 import AuroraSessionParser from './AuroraSessionParser';
+import moment from 'moment';
 
 module.exports = async function(connector = 'any') {
 
@@ -37,12 +38,13 @@ module.exports = async function(connector = 'any') {
         let session = {
             name: sessionDir.name.split('/').pop(),
             auroraDir: sessionDir.name,
+            content: readSessionTxtCmd.output[0],
             streams: []
         };
 
         try {
 
-            const parsedSession = await AuroraSessionParser.parseSessionTxtObject(readSessionTxtCmd.output[0]);
+            const parsedSession = await AuroraSessionParser.parseSessionTxtObject(session.content);
 
             Object.assign(session, parsedSession);
 
@@ -60,9 +62,17 @@ module.exports = async function(connector = 'any') {
                 session.streams[i].size = streamFile.size;
             }
         }
-        catch (error) {
+        catch (sessionWithError) {
 
-            session.error = error;
+            //infer the date from the name of the session if we have to
+            if (!sessionWithError.date || typeof sessionWithError != 'number'){
+
+                sessionWithError.date = moment(session.name, 'YYYY-MM-DD@HHmm').toDate();
+            }
+
+            //TODO consider logging this event.
+            //otherwise we still want to report this session
+            Object.assign(session, sessionWithError);
         }
 
         sessions.push(session);

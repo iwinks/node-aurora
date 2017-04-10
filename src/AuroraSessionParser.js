@@ -4,8 +4,6 @@ export default class AuroraSessionParser {
 
     static parseSessionTxtObject = (sessionTxtObject) => {
 
-        if (typeof sessionTxtObject != 'object') return Promise.reject('Session object invalid.');
-
         const session = {
             awakenings: 0,
             sleepOnset: 0,
@@ -23,16 +21,24 @@ export default class AuroraSessionParser {
             }
         };
 
+        const throwError = (error) => {
+
+            session.error = error;
+            return Promise.reject(session);
+        };
+
+        if (typeof sessionTxtObject != 'object') return throwError('Session object invalid.');
+
         //TODO: consider using deep assign
         Object.assign(session, sessionTxtObject);
 
-        //if (!session.version < 20001) return Promise.reject('Aurora firmware version no longer supported.');
+        if (!session.version || !session.date || !session.profile || !session.duration) return throwError('Session corrupted.');
 
-        if (!session.date || !session.profile || !session.duration) return Promise.reject('Session corrupted.');
+        if (parseInt(session.version) < 20001) return throwError('Aurora firmware version no longer supported.');
 
-        if (!Array.isArray(session.events) || !session.events.length) return Promise.reject('Session has no events.');
+        if (!Array.isArray(session.events) || !session.events.length) return throwError('This session has no events.');
 
-        //if (session.duration < 1000 * 60 * 30) return Promise.reject('Session is shorter than 30 minutes.');
+        if (session.duration < 1000 * 60 * 30) return throwError('Session is shorter than 30 minutes.');
 
         let signalPresent = false;
 
@@ -40,7 +46,7 @@ export default class AuroraSessionParser {
 
             if (typeof event.id == 'undefined' || typeof event.time == 'undefined' || typeof event.flags == 'undefined') {
 
-                return Promise.reject('One or more session events are corrupted.');
+                return throwError('One or more session events are corrupted.');
             }
 
             if (event.id == EventIds.SLEEP_TRACKER_MONITOR && event.flags != SleepStages.UNKNOWN) {
@@ -51,17 +57,17 @@ export default class AuroraSessionParser {
             event.date = session.date + event.time;
         }
 
-        if (!signalPresent) return Promise.reject('Session does not contain a clean EEG signal.');
+        if (!signalPresent) return throwError('Session does not contain a clean EEG signal.');
 
         if (session.streams) {
 
-            if (!Array.isArray(session.streams)) return Promise.reject('Session stream array corrupted.');
+            if (!Array.isArray(session.streams)) return throwError('Session stream array corrupted.');
 
             for (const stream of session.streams) {
 
                 if (typeof stream.id == 'undefined' || typeof stream.time == 'undefined' || typeof stream.type == 'undefined' || !stream.file) {
 
-                    return Promise.reject('One or more session streams are corrupted.');
+                    return throwError('One or more session streams are corrupted.');
                 }
 
                 stream.date = session.date + stream.time;

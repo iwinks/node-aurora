@@ -125,7 +125,7 @@ serialTest('Testing command response serial parsing (timeout case)...', 'SerialC
 
         t.end();
 
-    }, 2000);
+    }, 10000);
 
 });
 

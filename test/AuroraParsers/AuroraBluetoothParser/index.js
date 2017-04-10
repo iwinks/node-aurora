@@ -179,7 +179,7 @@ bluetoothTest('Testing command response bluetooth parsing (timeout case)...', 'B
 
         t.end();
 
-    }, 2000);
+    }, 10000);
 
 });
 

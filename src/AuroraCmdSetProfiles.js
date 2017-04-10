@@ -1,28 +1,29 @@
-module.exports = async function(profiles, connector = 'any') {
+import pick from 'lodash/pick';
+
+module.exports = async function(newProfiles, connector = 'any') {
 
     await this.queueCmd('sd-dir-del profiles');
     await this.queueCmd('sd-dir-create profiles');
 
-    const activeProfiles = [];
+    const profiles = [];
+    const profileList = [];
 
-    for (let profile of profiles) {
+    for (let i = 0; i < newProfiles.length; i++) {
 
-        const profWriteCmd = await this.writeFile(`profiles/${profile.name}`, profile.content, true, connector);
+        const profWriteCmd = await this.writeFile(`profiles/${newProfiles[i].name}`, newProfiles[i].content, true, connector);
 
-        //TODO: decide if commands should output full path or just name
-        //probably should be consistent with dir-read output
-        //update name in case it changed because of a rename
-        profile.name = profWriteCmd.response.file.replace('profiles/','');
+        const profile = pick(newProfiles[i], ['id','active','content']);
 
-        if (profile.active){
+        profile.name = profWriteCmd.response.file.slice(9);
+        profile.key = i + profile.id + profile.name;
 
-            activeProfiles.push(`${profile.name}:${profile.id}`);
-        }
+        //add leading ':' to mark profile as inactive
+        profileList.push(`${profile.active ? '' : ':'}${profile.name}:${profile.id}`);
+
+        profiles.push(profile);
     }
 
-    const listWriteCmd = await this.writeFile('profiles/_profiles.list', activeProfiles.join('\r\n'), false, connector);
+    await this.writeFile('profiles/_profiles.list', profileList.join('\r\n'), false, connector);
 
-    listWriteCmd.profiles = profiles;
-
-    return listWriteCmd;
+    return profiles;
 };

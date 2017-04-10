@@ -166,7 +166,7 @@ export default class AuroraBluetoothParser extends EventEmitter {
 
         clearTimeout(this._cmdWatchdogTimer);
 
-        this._cmdWatchdogTimer = setTimeout(this._onCmdTimeout, 2000);
+        this._cmdWatchdogTimer = setTimeout(this._onCmdTimeout, 10000);
 
         if (this._cmdState != BleCmdStates.IDLE && !this._cmd){
 
@@ -227,7 +227,7 @@ export default class AuroraBluetoothParser extends EventEmitter {
         this.emit('cmdOutputReady', output);
 
         clearTimeout(this._cmdWatchdogTimer);
-        this._cmdWatchdogTimer = setTimeout(this._onCmdTimeout, 2000);
+        this._cmdWatchdogTimer = setTimeout(this._onCmdTimeout, 10000);
     }
 
     _cmdDataReceiveResponseObject = (buffer) => {
