@@ -8,10 +8,9 @@ module.exports = async function(connector = 'any') {
     let dirReadCmd;
 
     try {
-        dirReadCmd = await this.queueCmd('sd-dir-read sessions', connector);git
+        dirReadCmd = await this.queueCmd('sd-dir-read sessions', connector);
     }
     catch (error){
-
         return [];
     }
 
