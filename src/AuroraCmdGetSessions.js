@@ -5,8 +5,15 @@ import moment from 'moment';
 module.exports = async function(connector = 'any') {
 
     const sessions = [];
+    let dirReadCmd;
 
-    const dirReadCmd = await this.queueCmd('sd-dir-read sessions', connector);
+    try {
+        dirReadCmd = await this.queueCmd('sd-dir-read sessions', connector);git
+    }
+    catch (error){
+
+        return [];
+    }
 
     const sessionDirs = dirReadCmd.response;
 

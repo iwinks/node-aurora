@@ -16,7 +16,7 @@ module.exports = async function(srcPath, destDir, type, connector = 'any') {
         if (file.slice(-4) == '.dat' && type != undefined){
 
             file = file.slice(0, -4) + '.csv';
-            transform = new AuroraTransformBinary(stream.type);
+            transform = new AuroraTransformBinary(type);
         }
 
         let writeStream = fs.createWriteStream(path.join(destDir, file));
@@ -29,7 +29,9 @@ module.exports = async function(srcPath, destDir, type, connector = 'any') {
 
         await this.readFile(srcPath, writeStream, connector);
 
-        return await this.queueCmd(`sd-file-del ${srcPath}`);
+        await this.queueCmd(`sd-file-del ${srcPath}`);
+
+        return path.join(destDir, file);
     }
     catch (error) {
 
