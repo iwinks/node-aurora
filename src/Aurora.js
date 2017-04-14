@@ -438,10 +438,11 @@ class Aurora extends EventEmitter {
                 return cmd;
             })
             .catch((error) => {
-                console.log('error', error);
+
                 cmd.origin = this._cmdCurrent.connectorType == 'any' ? 'unknown' : this._cmdCurrent.connectorType;
                 cmd.error = true;
                 cmd.response = {error: -99, message: `Fatal error: ${error}`};
+                this._cmdQueue = [];
 
                 return cmd;
 
@@ -451,7 +452,6 @@ class Aurora extends EventEmitter {
                 cmd.outputStream.push(null);
 
                 if (cmd.error){
-                    this._cmdQueue = [];
                     this._cmdCurrent.reject(cmd);
                 }
                 else {
