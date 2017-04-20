@@ -1,9 +1,11 @@
 import EventEmitter from 'events';
-import noble from 'noble';
 import keyBy from 'lodash/keyBy';
 import {sleep, promisify} from './util';
 import AuroraBluetoothParser from './AuroraBluetoothParser';
 import {BleAuroraService, BleAuroraChars, BleCmdStates, BLE_CMD_MAX_PACKET_LENGTH} from './AuroraConstants';
+
+//nasty nasty nasty, see https://github.com/sandeepmistry/noble/issues/570
+try { noble = require("noble"); } catch(err) { noble = { on: () => {}, }; }
 
 const INIT_DELAY_MS = 5000;
 const DISCONNECT_RETRY_DELAY_MS = 3000;
