@@ -6,7 +6,11 @@ import {BleAuroraService, BleAuroraChars, BleCmdStates, BLE_CMD_MAX_PACKET_LENGT
 
 //nasty nasty nasty, see https://github.com/sandeepmistry/noble/issues/570
 let noble;
-try { noble = require("noble"); } catch(err) { noble = { on: () => {}, }; }
+try {
+    noble = require('noble');
+} catch(err) {
+    noble = new EventEmitter();
+}
 
 const INIT_DELAY_MS = 5000;
 const DISCONNECT_RETRY_DELAY_MS = 3000;
