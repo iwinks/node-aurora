@@ -5,6 +5,7 @@ import AuroraBluetoothParser from './AuroraBluetoothParser';
 import {BleAuroraService, BleAuroraChars, BleCmdStates, BLE_CMD_MAX_PACKET_LENGTH} from './AuroraConstants';
 
 //nasty nasty nasty, see https://github.com/sandeepmistry/noble/issues/570
+let noble;
 try { noble = require("noble"); } catch(err) { noble = { on: () => {}, }; }
 
 const INIT_DELAY_MS = 5000;
