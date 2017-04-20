@@ -54,6 +54,7 @@
     "node-fetch": "^1.6.3",
     "serialport": "^4.0.7",
     "split": "^1.0.0",
+    "usb": "^1.2.0",
     "usb-detection": "^1.4.0"
   }
 }
