@@ -18,7 +18,9 @@ export default class AuroraSessionParser {
                 light: 0,
                 deep: 0,
                 rem: 0
-            }
+            },
+            events: [],
+            streams: []
         };
 
         const throwError = (error) => {
@@ -36,11 +38,11 @@ export default class AuroraSessionParser {
 
         if (parseInt(session.version) < 20001) return throwError('Aurora firmware version no longer supported.');
 
-        if (!Array.isArray(session.events) || !session.events.length) return throwError('This session has no events.');
+        if (!Array.isArray(session.events)) return throwError('Session event array corrupted.');
 
-        if (session.duration < 1000 * 60 * 30) return throwError('Session is shorter than 30 minutes.');
+        if (!Array.isArray(session.streams)) return throwError('Session stream array corrupted.');
 
-        let signalPresent = false;
+       //if (session.duration < 1000 * 60 * 30) return throwError('Session is shorter than 30 minutes.');
 
         for (const event of session.events) {
 
@@ -49,19 +51,10 @@ export default class AuroraSessionParser {
                 return throwError('One or more session events are corrupted.');
             }
 
-            if (event.id == EventIds.SLEEP_TRACKER_MONITOR && event.flags != SleepStages.UNKNOWN) {
-
-                signalPresent = true;
-            }
-
             event.date = session.date + event.time;
         }
 
-        if (!signalPresent) return throwError('Session does not contain a clean EEG signal.');
-
         if (session.streams) {
-
-            if (!Array.isArray(session.streams)) return throwError('Session stream array corrupted.');
 
             for (const stream of session.streams) {
 
