@@ -54,7 +54,6 @@
     "node-fetch": "^1.6.3",
     "serialport": "^4.0.7",
     "split": "^1.0.0",
-    "usb": "Cedware/node-usb",
-    "usb-detection": "^1.4.0"
+    "usb": "Cedware/node-usb"
   }
 }

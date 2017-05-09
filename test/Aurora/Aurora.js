@@ -54,7 +54,7 @@ const auroraTest = (type, name, runTest) => {
                     runTest(st, connector).then(resolve).catch(reject).then(() => st.end());
 
                 });
-            })
+            });
 
         };
     };
@@ -70,6 +70,33 @@ const auroraTest = (type, name, runTest) => {
     }
 };
 
+
+test('Testing Aurora bluetooth connectivity...', (t) => {
+
+    Promise.resolve()
+        .then(() => resetTest())
+        .then(() => aurora.connectBluetooth())
+        .then(() => {
+
+            t.pass(`Aurora master connected over bluetooth. Proceeding with bluetooth tests.`);
+
+            spiesCalledOnce(t, ['bluetoothConnectionChange'], eventSpies);
+            spiesNeverCalled(t, events, eventSpies, ['bluetoothConnectionChange','log']);
+
+            bluetoothTests.reduce((prevTest, nextTest) => {
+
+                resetTest();
+                return prevTest.then(nextTest(t)).catch(t.fail);
+
+            }, Promise.resolve());
+
+        }).catch((e) => {
+
+            t.pass('Aurora not connected over bluetooth. Skipping bluetooth tests.');
+            
+        }).then(() => t.end());
+
+});
 
 test('Testing Aurora usb connectivity...', t => {
 
@@ -99,33 +126,6 @@ test('Testing Aurora usb connectivity...', t => {
 
 });
 
-
-test('Testing Aurora bluetooth connectivity...', (t) => {
-
-    Promise.resolve()
-        .then(() => resetTest())
-        .then(() => aurora.connectBluetooth())
-        .then(() => {
-
-            t.pass(`Aurora master connected over bluetooth. Proceeding with bluetooth tests.`);
-
-            spiesCalledOnce(t, ['bluetoothConnectionChange'], eventSpies);
-            spiesNeverCalled(t, events, eventSpies, ['bluetoothConnectionChange','log']);
-
-            bluetoothTests.reduce((prevTest, nextTest) => {
-
-                resetTest();
-                return prevTest.then(nextTest(t)).catch(t.fail);
-
-            }, Promise.resolve());
-
-        }).catch((e) => {
-
-            t.pass('Aurora not connected over bluetooth. Skipping bluetooth tests.');
-            
-        }).then(() => t.end());
-
-});
 
 test('Final test.', (t) => {
 
@@ -215,6 +215,22 @@ auroraTest('usb', 'Testing usb autoconnect...', (t) => {
 
 */
 
+auroraTest('any', 'Testing application firmware flashing over ${connector}...', (t, connector) => {
+
+    resetTest();
+
+    return aurora.flashFile('https://s3-us-west-1.amazonaws.com/aurora-firmware/v2.0.x/aurora-v2.0.4.hex').then(() => {
+
+        t.pass('Aurora flash completed successfully.');
+
+        spiesCalled(t, ['flashConnectionChange'], eventSpies);
+        spiesNeverCalled(t, events, eventSpies, ['flashConnectionChange']);
+
+    });
+
+});
+
+/*
 auroraTest('any', 'Testing Aurora syncTime command over ${connector}...', (t, connector) => {
 
     return aurora.syncTime(connector);
@@ -280,8 +296,6 @@ auroraTest('any', 'Testing Aurora getProfiles and setProfiles command over ${con
 
 });
 
-*/
-
 auroraTest('any', 'Testing Aurora getSessions command over ${connector}...', (t, connector) => {
 
     return aurora.getSessions(connector).then((sessions) => {
@@ -292,6 +306,7 @@ auroraTest('any', 'Testing Aurora getSessions command over ${connector}...', (t,
 
 });
 
+ */
 
 
 

@@ -1,20 +1,16 @@
 import AuroraUsb from './AuroraUsb';
 import AuroraBluetooth from './AuroraBluetooth';
 import DriveList from 'drivelist';
-import usbDetect from 'usb-detection';
 import ejectMedia from 'eject-media';
 import AuroraConstants from './AuroraConstants';
 import EventEmitter from 'events';
 import Stream from 'stream';
 import {sleep, promisify} from './util';
+import usb from 'usb';
 
 const MSD_DISCONNECT_RETRY_DELAY_MS = 2000;
 const MSD_SCAN_RETRY_DELAY_MS = 2000;
 const MSD_CONNECT_DELAY_SEC = 30;
-
-const MSD_ADD_EVENT_NAME = `add:${+AuroraConstants.AURORA_USB_VID}:${+AuroraConstants.AURORA_USB_MSD_PID}`;
-const MSD_REMOVE_EVENT_NAME = `remove:${+AuroraConstants.AURORA_USB_VID}:${+AuroraConstants.AURORA_USB_MSD_PID}`;
-const SERIAL_ADD_EVENT_NAME = `add:${+AuroraConstants.AURORA_USB_VID}:${+AuroraConstants.AURORA_USB_SERIAL_PID}`
 
 class Aurora extends EventEmitter {
 
@@ -130,8 +126,6 @@ class Aurora extends EventEmitter {
 
     async disconnectUsb() {
 
-        this._autoConnectUsb = false;
-
         if (!this._auroraUsb.isConnected() && !this._auroraUsb.isConnecting()){
 
             return;
@@ -175,8 +169,6 @@ class Aurora extends EventEmitter {
     }
 
     async disconnectBluetooth(){
-
-        this._autoConnectBluetooth = false;
 
         if (!this._auroraBluetooth.isConnected() && !this._auroraBluetooth.isConnecting()){
 
@@ -290,6 +282,8 @@ class Aurora extends EventEmitter {
         //since we are going to secretly turn auto connect on now
         const wasUsbAutoConnectOff = !this._autoConnectUsb;
         const wasBluetoothAutoConnectOff = !this._autoConnectBluetooth;
+        const wasUsbConnected = this.isUsbConnected();
+        const wasBluetoothConnected = this.isBluetoothConnected();
 
         if (this.isUsbConnected()){
 
@@ -301,7 +295,10 @@ class Aurora extends EventEmitter {
             this._autoConnectBluetooth = true;
         }
 
+
         return this.queueCmd(`os-flash ${fwFile}`).then(() => {
+
+            this._isFlashing = true;
 
             return new Promise((resolve, reject) => {
 
@@ -324,7 +321,25 @@ class Aurora extends EventEmitter {
 
                     clearTimeout(flashTimeout);
 
-                    removeEventListener('flashConnectionChange', onFlashConnectionChange);
+                    this.removeListener('flashConnectionChange', onFlashConnectionChange);
+
+                    if (wasUsbConnected && !this.isUsbConnected()){
+
+                        this.emit('usbConnectionChange', false);
+                    }
+
+                    if (wasBluetoothConnected && !this.isBluetoothConnected()){
+
+                        setTimeout(() => {
+
+                            if (!this.isBluetoothConnected()) {
+
+                                this.emit('bluetoothConnectionChange', false);
+                            }
+
+                        }, 3000);
+                    }
+
                 };
 
                 onFlashConnectionChange = (fwInfo) => {
@@ -513,24 +528,48 @@ class Aurora extends EventEmitter {
 
     _watchUsb = () => {
 
-        usbDetect.removeListener(MSD_ADD_EVENT_NAME, this._onMsdAdd);
-        usbDetect.removeListener(MSD_REMOVE_EVENT_NAME, this._onMsdRemove);
-        usbDetect.removeListener(SERIAL_ADD_EVENT_NAME, this._onSerialAdd);
+        this._unwatchUsb();
 
-        usbDetect.on(MSD_ADD_EVENT_NAME, this._onMsdAdd);
-        usbDetect.on(MSD_REMOVE_EVENT_NAME, this._onMsdRemove);
-        usbDetect.on(SERIAL_ADD_EVENT_NAME, this._onSerialAdd);
-
-        usbDetect.startMonitoring();
+        usb.on('attach', this._onUsbDeviceAttached);
+        usb.on('detach', this._onUsbDeviceDetached);
     };
 
     _unwatchUsb = () => {
 
-        usbDetect.removeListener(MSD_ADD_EVENT_NAME, this._onMsdAdd);
-        usbDetect.removeListener(MSD_REMOVE_EVENT_NAME, this._onMsdRemove);
-        usbDetect.removeListener(SERIAL_ADD_EVENT_NAME, this._onSerialAdd);
+        usb.removeListener('attach', this._onUsbDeviceAttached);
+        usb.removeListener('detach', this._onUsbDeviceDetached);
+    };
 
-        usbDetect.stopMonitoring();
+    _onUsbDeviceAttached = (device) => {
+
+        const {idVendor, idProduct} = device.deviceDescriptor;
+
+        if (idVendor === parseInt(AuroraConstants.AURORA_USB_VID)) {
+
+            if (idProduct == parseInt(AuroraConstants.AURORA_USB_MSD_PID)) {
+
+                this._findMsdDrive(5).then(this._msdSetAttached, true);
+            }
+            else if (idProduct === parseInt(AuroraConstants.AURORA_USB_SERIAL_PID) && this._autoConnectUsb) {
+
+                this.connect();
+            }
+        }
+
+    };
+
+    _onUsbDeviceDetached = (device) => {
+
+        const {idVendor, idProduct} = device.deviceDescriptor;
+
+        if (idVendor === parseInt(AuroraConstants.AURORA_USB_VID)) {
+
+            if (idProduct === parseInt(AuroraConstants.AURORA_USB_MSD_PID)) {
+
+                this._findMsdDrive(5).then(this._msdSetDetached, false);
+            }
+        }
+
     };
 
     _msdSetAttached = (msdDrive) => {
@@ -555,6 +594,8 @@ class Aurora extends EventEmitter {
     };
 
     _onUsbConnectionStateChange = (connectionState, previousConnectionState) => {
+
+        //console.log(`_onUsbConnectionStateChange ${previousConnectionState} -> ${connectionState}`);
 
         if (connectionState == AuroraUsb.ConnectionStates.CONNECTED_IDLE &&
             previousConnectionState == AuroraUsb.ConnectionStates.CONNECTING){
@@ -602,24 +643,6 @@ class Aurora extends EventEmitter {
                 this._auroraBluetooth.connect(0).catch(() => {});
             }
 
-        }
-    };
-
-    _onMsdAdd = () => {
-
-        this._findMsdDrive(5).then(this._msdSetAttached, true);
-    };
-
-    _onMsdRemove = () => {
-
-        this._findMsdDrive(5).then(this._msdSetDetached, false);
-    };
-
-    _onSerialAdd = () => {
-
-        if (this._autoConnectUsb){
-
-            this.connect();
         }
     };
 

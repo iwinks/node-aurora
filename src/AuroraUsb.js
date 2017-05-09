@@ -131,7 +131,11 @@ export default class AuroraUsb extends EventEmitter {
 
                             return auroraPort;
                         }
-                        catch (error) {} //swallow this error
+                        catch (error) {
+
+                            console.log('caught error', error);
+
+                        } //swallow this error
                     }
 
                     throw new Error(`Failed connecting to Aurora on port(s): ${auroraPorts.join(',')}`);
@@ -180,7 +184,7 @@ export default class AuroraUsb extends EventEmitter {
             //no but we can't wait any longer...
         }
 
-        return promisify(this._serialPort.close, this._serialPort)().then(() => {
+        return promisify(this._serialPort.close, this._serialPort)().catch(console.log).then(() => {
 
             //in case disconnected event hasn't fired yet, we fire it here
             this._setConnectionState(AuroraUsb.ConnectionStates.DISCONNECTED);
@@ -218,7 +222,10 @@ export default class AuroraUsb extends EventEmitter {
 
             this._serialParser.once('cmdResponse', (cmdResponse) => {
 
-                this._setConnectionState(AuroraUsb.ConnectionStates.CONNECTED_IDLE);
+                if (this._connectionState == AuroraUsb.ConnectionStates.CONNECTED_BUSY) {
+
+                    this._setConnectionState(AuroraUsb.ConnectionStates.CONNECTED_IDLE);
+                }
 
                 cmdResponse.origin = 'usb';
 
@@ -232,7 +239,10 @@ export default class AuroraUsb extends EventEmitter {
 
                 this._serialParser.removeAllListeners('cmdResponse');
 
-                this._setConnectionState(AuroraUsb.ConnectionStates.CONNECTED_IDLE);
+                if (this._connectionState == AuroraUsb.ConnectionStates.CONNECTED_BUSY) {
+
+                    this._setConnectionState(AuroraUsb.ConnectionStates.CONNECTED_IDLE);
+                }
 
                 reject(error);
             });
