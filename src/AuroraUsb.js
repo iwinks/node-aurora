@@ -220,7 +220,17 @@ export default class AuroraUsb extends EventEmitter {
 
         return new Promise((resolve, reject) => {
 
+            const onDisconnect = (connectionState) => {
+
+                if (connectionState == AuroraUsb.ConnectionStates.DISCONNECTED) {
+
+                    reject('Usb disconnected while processing command response.');
+                }
+            };
+
             this._serialParser.once('cmdResponse', (cmdResponse) => {
+
+                this.removeListener('connectionStateChange', onDisconnect);
 
                 if (this._connectionState == AuroraUsb.ConnectionStates.CONNECTED_BUSY) {
 
@@ -233,11 +243,14 @@ export default class AuroraUsb extends EventEmitter {
 
             });
 
+            this.once('connectionStateChange', onDisconnect);
+
             cmd = cmd.trim() + '\r';
 
             this._write(cmd).catch(error => {
 
                 this._serialParser.removeAllListeners('cmdResponse');
+                this.removeListener('connectionStateChange', onDisconnect);
 
                 if (this._connectionState == AuroraUsb.ConnectionStates.CONNECTED_BUSY) {
 

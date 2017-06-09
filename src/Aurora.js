@@ -5,7 +5,7 @@ import ejectMedia from 'eject-media';
 import AuroraConstants from './AuroraConstants';
 import EventEmitter from 'events';
 import Stream from 'stream';
-import {sleep, promisify} from './util';
+import {sleep, promisify, versionToString} from './util';
 import usb from 'usb';
 
 const MSD_DISCONNECT_RETRY_DELAY_MS = 2000;
@@ -73,7 +73,7 @@ class Aurora extends EventEmitter {
 
         if (!this._auroraUsb.isConnected() && !this._auroraUsb.isConnecting()){
 
-            this._auroraUsb.connect().catch((e) => {console.log(e)});
+            this._auroraUsb.connect().catch(() => {});
         }
 
         if (!this._auroraBluetooth.isConnected() && !this._auroraBluetooth.isConnecting()){
@@ -197,7 +197,7 @@ class Aurora extends EventEmitter {
 
         try {
 
-            await this.queueCmd('usb-msd-connect');
+            await this.queueCmd('usb-mode 2');
         }
         catch (error) {
 
@@ -272,7 +272,7 @@ class Aurora extends EventEmitter {
         });
     }
 
-    async flash(fwFile = 'aurora.hex', fwVersion = false) {
+    async flash(fwFile, fwVersion = false, fwType = 'app') {
 
         if (this._isFlashing) return Promise.reject('Already flashing.');
 
@@ -295,8 +295,16 @@ class Aurora extends EventEmitter {
             this._autoConnectBluetooth = true;
         }
 
+        let flashCmd = fwType == 'bootloader' || fwType == 'bootloader-and-bootstrap' ? 'os-flash-bootloader' : (fwType == 'ble' ? 'ble-flash' : 'os-flash');
 
-        return this.queueCmd(`os-flash ${fwFile}`).then(() => {
+        flashCmd += ` ${fwFile} /`;
+
+        if (fwType == 'bootloader-and-bootstrap') {
+
+            flashCmd += ' 1';
+        }
+
+        return this.queueCmd(flashCmd).then(() => {
 
             this._isFlashing = true;
 
@@ -348,13 +356,15 @@ class Aurora extends EventEmitter {
 
                         finish();
 
-                        if (!fwVersion || fwInfo.version === fwVersion){
+                        const version = fwType == 'bootloader' || fwType == 'bootloader-and-bootstrap' ? fwInfo.bootloaderVersion : (fwType == 'ble' ? fwInfo.bleVersion : fwInfo.version);
+
+                        if (!fwVersion || version === fwVersion){
 
                             resolve(fwInfo);
                         }
                         else {
 
-                            reject(`Flash failed. Expected version ${fwVersion} but have ${fwInfo.version}.`);
+                            reject(`Flash failed. Expected ${type} version ${versionToString(fwVersion)} but have ${versionToString(version)}.`);
                         }
                     }
                 };
@@ -366,7 +376,7 @@ class Aurora extends EventEmitter {
                     finish();
                     reject('Unable to verify flash. Timeout waiting for reconnection.');
 
-                }, 30000);
+                }, 50000);
 
             });
 
@@ -398,6 +408,24 @@ class Aurora extends EventEmitter {
 
                 this._processCmdQueue();
             }
+
+        });
+    }
+
+    //this command is really only useful to reconcile differences between
+    //the old version of os-info and new ones
+    //TODO: remove once all in-field units are upgraded to firmware >= 2.1.0
+    async _getOsInfo(connectorType) {
+
+        return this.queueCmd('os-info 1', connectorType).catch((cmdWithResponse) => {
+
+            //if the "too many arguments" error, then we'll reissue the command without params
+            if (cmdWithResponse.error && cmdWithResponse.response.error === 3) {
+
+                return this.queueCmd('os-info', connectorType);
+            }
+
+            return Promise.reject(cmdWithResponse);
 
         });
     }
@@ -540,19 +568,34 @@ class Aurora extends EventEmitter {
         usb.removeListener('detach', this._onUsbDeviceDetached);
     };
 
-    _onUsbDeviceAttached = (device) => {
+    _onUsbDeviceAttached = async (device) => {
 
         const {idVendor, idProduct} = device.deviceDescriptor;
+        const auroraUsbVid = parseInt(AuroraConstants.AURORA_USB_VID);
+        const auroraUsbMsdPid = parseInt(AuroraConstants.AURORA_USB_MSD_PID);
+        const auroraUsbSerialPid = parseInt(AuroraConstants.AURORA_USB_SERIAL_PID);
 
-        if (idVendor === parseInt(AuroraConstants.AURORA_USB_VID)) {
+        if (idVendor === auroraUsbVid) {
 
-            if (idProduct == parseInt(AuroraConstants.AURORA_USB_MSD_PID)) {
+            console.log("aurora device found...");
+
+            if (idProduct === auroraUsbMsdPid) {
 
                 this._findMsdDrive(5).then(this._msdSetAttached, true);
             }
-            else if (idProduct === parseInt(AuroraConstants.AURORA_USB_SERIAL_PID) && this._autoConnectUsb) {
+            else if (idProduct === auroraUsbSerialPid) {
 
-                this.connect();
+                //we sleep do avoid spurious connection events that can happen with
+                //commands that perform a reset
+                await sleep(1000);
+
+                console.log('checking if still connected over usb...');
+
+                if (usb.findByIds(auroraUsbVid, auroraUsbSerialPid) && this._autoConnectUsb) {
+
+                    console.log('still connected.');
+                    this.connect();
+                }
             }
         }
 
@@ -595,12 +638,10 @@ class Aurora extends EventEmitter {
 
     _onUsbConnectionStateChange = (connectionState, previousConnectionState) => {
 
-        //console.log(`_onUsbConnectionStateChange ${previousConnectionState} -> ${connectionState}`);
-
         if (connectionState == AuroraUsb.ConnectionStates.CONNECTED_IDLE &&
             previousConnectionState == AuroraUsb.ConnectionStates.CONNECTING){
 
-            this.queueCmd('os-info', 'usb').then((cmd) => {
+            this._getOsInfo('usb').then((cmd) => {
 
                 this.emit(this._isFlashing ? 'flashConnectionChange' : 'usbConnectionChange', cmd.response);
 
@@ -623,7 +664,7 @@ class Aurora extends EventEmitter {
         if (connectionState == AuroraBluetooth.ConnectionStates.CONNECTED_IDLE &&
             previousConnectionState == AuroraBluetooth.ConnectionStates.CONNECTING){
 
-            this.queueCmd('os-info', 'bluetooth').then((cmd) => {
+            this._getOsInfo('bluetooth').then((cmd) => {
 
                 this.emit(this._isFlashing ? 'flashConnectionChange' : 'bluetoothConnectionChange', cmd.response);
 

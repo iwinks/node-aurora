@@ -4,6 +4,8 @@ exports.AURORA_USB_MSD_PID = '0xABED';
 
 exports.MSD_DRIVE_NAME = 'Aurora Drive';
 
+exports.LOW_BATTERY_THRESHOLD = 25;
+
 exports.BLE_CMD_MAX_PACKET_LENGTH = 20;
 
 exports.BLE_CMD_MAX_PAYLOAD = 120;

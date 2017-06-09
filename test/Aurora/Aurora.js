@@ -214,8 +214,8 @@ auroraTest('usb', 'Testing usb autoconnect...', (t) => {
 });
 
 */
-
-auroraTest('any', 'Testing application firmware flashing over ${connector}...', (t, connector) => {
+/*
+auroraTest('usb', 'Testing application firmware flashing over ${connector}...', (t, connector) => {
 
     resetTest();
 
@@ -229,8 +229,43 @@ auroraTest('any', 'Testing application firmware flashing over ${connector}...', 
     });
 
 });
+*/
 
 /*
+ auroraTest('usb', 'Testing BLE firmware flashing over ${connector}...', (t, connector) => {
+
+     resetTest();
+
+     return aurora.flashFile('https://s3-us-west-1.amazonaws.com/aurora-firmware/ble/v2.1.x/aurora-ble-v2.1.0.hex', 20100, 'ble').then(() => {
+
+         t.pass('Aurora BLE flash completed successfully.');
+
+         spiesCalled(t, ['flashConnectionChange'], eventSpies);
+         spiesNeverCalled(t, events, eventSpies, ['flashConnectionChange']);
+
+     });
+
+ });
+ */
+
+
+ auroraTest('usb', 'Testing bootloader firmware flashing over ${connector}...', (t, connector) => {
+
+     resetTest();
+
+     return aurora.flashFile('https://s3-us-west-1.amazonaws.com/aurora-firmware/bootloader/v2.1.x/aurora-bootloader-v2.1.0.hex', 20100, 'bootloader').then(() => {
+
+         t.pass('Aurora bootloader flash completed successfully.');
+
+         spiesCalled(t, ['flashConnectionChange'], eventSpies);
+         spiesNeverCalled(t, events, eventSpies, ['flashConnectionChange']);
+
+     });
+
+ });
+
+
+
 auroraTest('any', 'Testing Aurora syncTime command over ${connector}...', (t, connector) => {
 
     return aurora.syncTime(connector);

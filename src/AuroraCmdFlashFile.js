@@ -1,11 +1,14 @@
 import fs from 'fs';
 import {promisify} from './util';
 
-module.exports = function(fwPath, fwVersion = false) {
+module.exports = function(fwPath, fwVersion = false, fwType = 'app') {
 
-    return this.uploadFile(fwPath, 'aurora.hex').then(() => {
+    //TODO: this condition is for backwards compatibility
+    const filename = fwType == 'app' ? 'aurora.hex' : `aurora-${fwType}.hex`;
 
-        return this.flash('aurora.hex', fwVersion);
+    return this.uploadFile(fwPath, filename).then(() => {
+
+        return this.flash(filename, fwVersion, fwType);
 
     });
 

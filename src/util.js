@@ -55,15 +55,21 @@ exports.parseValueString = (value) => {
         return +date;
     }
 
+    //TODO: eventually remove this, as in the future, uppercase will be
+    //required to trigger conversion
     const valueUC = value.toUpperCase();
 
     if (valueUC === 'TRUE' || valueUC === 'ON' || valueUC === 'ACTIVE' || valueUC === 'YES') {
 
         return true;
     }
-    else if (valueUC === 'FALSE' || valueUC === 'OFF' || valueUC === 'INACTIVE' || valueUC === 'NO') {
+    else if (valueUC === 'FALSE' || valueUC === 'OFF' || valueUC === 'INACTIVE' || valueUC === 'NO' || valueUC === 'NONE') {
 
         return false;
+    }
+    else if (valueUC === 'UNKNOWN'){
+
+        return 0;
     }
 
     return value;
@@ -90,5 +96,17 @@ exports.camelCaseObjectKeys = (object) => {
 exports.maskFromIds = (...ids) => {
 
     return ids.reduce((mask, id) => mask + (1 << id), 0);
+
+};
+
+exports.versionToString = (version) => {
+
+    if (!version) return "UNKNOWN";
+
+    const major = Math.floor(version / 10000);
+    const minor = Math.floor((version - major*10000) / 100);
+    const build = version - major*10000 - minor*100;
+
+    return `v${major}.${minor}.${build}`;
 
 };
