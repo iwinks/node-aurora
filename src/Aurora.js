@@ -6,7 +6,7 @@ import AuroraConstants from './AuroraConstants';
 import EventEmitter from 'events';
 import Stream from 'stream';
 import {sleep, promisify, versionToString, stringToVersion} from './util';
-import usb from 'usb';
+import usbDetect from 'usb-detection';
 
 const MSD_DISCONNECT_RETRY_DELAY_MS = 2000;
 const MSD_SCAN_RETRY_DELAY_MS = 2000;
@@ -580,49 +580,42 @@ class Aurora extends EventEmitter {
 
         this._unwatchUsb();
 
-        usb.on('attach', this._onUsbDeviceAttached);
-        usb.on('detach', this._onUsbDeviceDetached);
+        usbDetect.on(`add:${AuroraConstants.AURORA_USB_VID}`, this._onAuroraUsbAttached);
+        usbDetect.on(`remove:${AuroraConstants.AURORA_USB_VID}`, this._onAuroraUsbDetached);
     };
 
     _unwatchUsb = () => {
 
-        usb.removeListener('attach', this._onUsbDeviceAttached);
-        usb.removeListener('detach', this._onUsbDeviceDetached);
+        usbDetect.removeListener(`add:${AuroraConstants.AURORA_USB_VID}`, this._onAuroraUsbAttached);
+        usbDetect.removeListener(`remove:${AuroraConstants.AURORA_USB_VID}`, this._onAuroraUsbDetached);
     };
 
-    _onUsbDeviceAttached = async (device) => {
+    _onAuroraUsbAttached = async (device) => {
 
-        const {idVendor, idProduct} = device.deviceDescriptor;
-        const auroraUsbVid = parseInt(AuroraConstants.AURORA_USB_VID);
-        const auroraUsbMsdPid = parseInt(AuroraConstants.AURORA_USB_MSD_PID);
-        const auroraUsbSerialPid = parseInt(AuroraConstants.AURORA_USB_SERIAL_PID);
+        if (device.productId === parseInt(AuroraConstants.AURORA_USB_MSD_PID)) {
 
-        if (idVendor === auroraUsbVid) {
+            this._findMsdDrive(5).then(this._msdSetAttached, true);
+        }
+        else if (device.productId  === parseInt(AuroraConstants.AURORA_USB_SERIAL_PID) && this._autoConnectUsb) {
 
-            console.log("aurora device found...");
+            await sleep(500);
 
-            if (idProduct === auroraUsbMsdPid) {
+            if (this._autoConnectUsb)
+            {
+                const device = await usbDetect.find(AuroraConstants.AURORA_USB_VID, AuroraConstants.AURORA_USB_SERIAL_PID);
 
-                this._findMsdDrive(5).then(this._msdSetAttached, true);
-            }
-            else if (idProduct === auroraUsbSerialPid && this._autoConnectUsb) {
+                console.log(device);
 
                 this.connect();
             }
         }
-
     };
 
-    _onUsbDeviceDetached = (device) => {
+    _onAuroraUsbDetached = (device) => {
 
-        const {idVendor, idProduct} = device.deviceDescriptor;
+        if (device.productId === parseInt(AuroraConstants.AURORA_USB_MSD_PID)) {
 
-        if (idVendor === parseInt(AuroraConstants.AURORA_USB_VID)) {
-
-            if (idProduct === parseInt(AuroraConstants.AURORA_USB_MSD_PID)) {
-
-                this._findMsdDrive(5).then(this._msdSetDetached, false);
-            }
+            this._findMsdDrive(5).then(this._msdSetDetached, false);
         }
 
     };
