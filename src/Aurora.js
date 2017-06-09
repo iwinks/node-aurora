@@ -592,8 +592,6 @@ class Aurora extends EventEmitter {
 
     _onAuroraUsbAttached = async (device) => {
 
-        console.log('device attached', device);
-
         if (device.productId === parseInt(AuroraConstants.AURORA_USB_MSD_PID)) {
 
             this._findMsdDrive(5).then(this._msdSetAttached, true);
@@ -605,8 +603,6 @@ class Aurora extends EventEmitter {
     };
 
     _onAuroraUsbDetached = (device) => {
-
-        console.log('device detached', device);
 
         if (device.productId === parseInt(AuroraConstants.AURORA_USB_MSD_PID)) {
 
