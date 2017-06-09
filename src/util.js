@@ -110,3 +110,12 @@ exports.versionToString = (version) => {
     return `v${major}.${minor}.${build}`;
 
 };
+
+exports.stringToVersion = (versionString) => {
+
+    const version = versionString.split('.');
+
+    if (version.length != 3) return 0;
+
+    return parseInt(version[0])*10000 + parseInt(version[1])*100 + parseInt(version[2]);
+};

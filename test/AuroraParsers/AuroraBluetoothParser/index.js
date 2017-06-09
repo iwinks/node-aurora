@@ -20,7 +20,7 @@ const cmdResponseSuccess = {
         bytesFree: 5555,
         batteryLevel: 100,
         runningTime: '5.20 h',
-        profile: 'None',
+        profile: false,
         debugMode: false
     }
 };

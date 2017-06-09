@@ -5,7 +5,7 @@ import ejectMedia from 'eject-media';
 import AuroraConstants from './AuroraConstants';
 import EventEmitter from 'events';
 import Stream from 'stream';
-import {sleep, promisify, versionToString} from './util';
+import {sleep, promisify, versionToString, stringToVersion} from './util';
 import usb from 'usb';
 
 const MSD_DISCONNECT_RETRY_DELAY_MS = 2000;
@@ -39,6 +39,7 @@ class Aurora extends EventEmitter {
 
         this._msdDrive = false;
         this._isFlashing = false;
+        this._info = {};
 
         //this scans for MSD disks that could potentially be the Aurora
         this._findMsdDrive().then(this._msdSetAttached, true);
@@ -297,11 +298,13 @@ class Aurora extends EventEmitter {
 
         let flashCmd = fwType == 'bootloader' || fwType == 'bootloader-and-bootstrap' ? 'os-flash-bootloader' : (fwType == 'ble' ? 'ble-flash' : 'os-flash');
 
-        flashCmd += ` ${fwFile} /`;
+        if (this._info.version >= 20100) {
+            flashCmd += ` ${fwFile} /`;
 
-        if (fwType == 'bootloader-and-bootstrap') {
+            if (fwType == 'bootloader-and-bootstrap') {
 
-            flashCmd += ' 1';
+                flashCmd += ' 1';
+            }
         }
 
         return this.queueCmd(flashCmd).then(() => {
@@ -420,13 +423,32 @@ class Aurora extends EventEmitter {
         return this.queueCmd('os-info 1', connectorType).catch((cmdWithResponse) => {
 
             //if the "too many arguments" error, then we'll reissue the command without params
-            if (cmdWithResponse.error && cmdWithResponse.response.error === 3) {
+            if (cmdWithResponse.response.error === 3) {
 
                 return this.queueCmd('os-info', connectorType);
             }
 
             return Promise.reject(cmdWithResponse);
 
+        }).then((cmdWithResponse) => {
+
+           if (cmdWithResponse.response.error === 3) {
+
+               return this.queueCmd('os-info', connectorType);
+           }
+
+           return cmdWithResponse;
+
+        }).then((cmdWithResponse) => {
+
+            if (typeof cmdWithResponse.response.version == 'string') {
+
+                cmdWithResponse.response.version = stringToVersion(cmdWithResponse.response.version);
+            }
+
+            this._info = cmdWithResponse.response;
+
+            return cmdWithResponse;
         });
     }
 
@@ -583,19 +605,9 @@ class Aurora extends EventEmitter {
 
                 this._findMsdDrive(5).then(this._msdSetAttached, true);
             }
-            else if (idProduct === auroraUsbSerialPid) {
+            else if (idProduct === auroraUsbSerialPid && this._autoConnectUsb) {
 
-                //we sleep do avoid spurious connection events that can happen with
-                //commands that perform a reset
-                await sleep(1000);
-
-                console.log('checking if still connected over usb...');
-
-                if (usb.findByIds(auroraUsbVid, auroraUsbSerialPid) && this._autoConnectUsb) {
-
-                    console.log('still connected.');
-                    this.connect();
-                }
+                this.connect();
             }
         }
 
