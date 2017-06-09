@@ -580,17 +580,19 @@ class Aurora extends EventEmitter {
 
         this._unwatchUsb();
 
-        usbDetect.on(`add:${AuroraConstants.AURORA_USB_VID}`, this._onAuroraUsbAttached);
-        usbDetect.on(`remove:${AuroraConstants.AURORA_USB_VID}`, this._onAuroraUsbDetached);
+        usbDetect.on(`add:${parseInt(AuroraConstants.AURORA_USB_VID)}`, this._onAuroraUsbAttached);
+        usbDetect.on(`remove:${parseInt(AuroraConstants.AURORA_USB_VID)}`, this._onAuroraUsbDetached);
     };
 
     _unwatchUsb = () => {
 
-        usbDetect.removeListener(`add:${AuroraConstants.AURORA_USB_VID}`, this._onAuroraUsbAttached);
-        usbDetect.removeListener(`remove:${AuroraConstants.AURORA_USB_VID}`, this._onAuroraUsbDetached);
+        usbDetect.removeListener(`add:${parseInt(AuroraConstants.AURORA_USB_VID)}`, this._onAuroraUsbAttached);
+        usbDetect.removeListener(`remove:${parseInt(AuroraConstants.AURORA_USB_VID)}`, this._onAuroraUsbDetached);
     };
 
     _onAuroraUsbAttached = async (device) => {
+
+        console.log('device attached', device);
 
         if (device.productId === parseInt(AuroraConstants.AURORA_USB_MSD_PID)) {
 
@@ -598,20 +600,13 @@ class Aurora extends EventEmitter {
         }
         else if (device.productId  === parseInt(AuroraConstants.AURORA_USB_SERIAL_PID) && this._autoConnectUsb) {
 
-            await sleep(500);
-
-            if (this._autoConnectUsb)
-            {
-                const device = await usbDetect.find(AuroraConstants.AURORA_USB_VID, AuroraConstants.AURORA_USB_SERIAL_PID);
-
-                console.log(device);
-
-                this.connect();
-            }
+            this.connect();
         }
     };
 
     _onAuroraUsbDetached = (device) => {
+
+        console.log('device detached', device);
 
         if (device.productId === parseInt(AuroraConstants.AURORA_USB_MSD_PID)) {
 
