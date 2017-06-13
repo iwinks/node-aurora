@@ -7,7 +7,7 @@ import {BleAuroraService, BleAuroraChars, BleCmdStates, BLE_CMD_MAX_PACKET_LENGT
 //nasty nasty nasty, see https://github.com/sandeepmistry/noble/issues/570
 let noble;
 try {
-    noble = require('noble');
+    noble = require('noble-uwp');
 } catch(err) {
     noble = new EventEmitter();
 }
