@@ -36,7 +36,7 @@
     "babel-preset-es2017": "^6.14.0",
     "babel-preset-stage-0": "^6.5.0",
     "babel-register": "^6.9.0",
-    "sinon": "^1.17.4",
+    "sinon": "^2.3.8",
     "tap-difflet": "^0.7.0",
     "tape": "^4.6.0"
   },
@@ -50,9 +50,9 @@
     "lodash": "^4.13.1",
     "mkdirp": "^0.5.1",
     "moment": "^2.13.0",
-    "noble-uwp": "^0.3.2",
+    "noble": "^1.8.1",
     "node-fetch": "^1.6.3",
-    "serialport": "^4.0.7",
+    "serialport": "^5.0.0-beta8",
     "split": "^1.0.0",
     "usb-detection": "^1.4.0"
   }

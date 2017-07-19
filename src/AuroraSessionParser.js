@@ -44,11 +44,25 @@ export default class AuroraSessionParser {
 
        //if (session.duration < 1000 * 60 * 30) return throwError('Session is shorter than 30 minutes.');
 
-        for (const event of session.events) {
+        for (let i = 0; i < session.events.length; i++) {
+
+            const event = session.events[i];
+
+            if (typeof event != 'object'){
+
+                //todo: fix this mess...
+                console.log('Missing event at index: ' + i);
+                session.events.splice(i, 1);
+                i--;
+                continue;
+            }
 
             if (typeof event.id == 'undefined' || typeof event.time == 'undefined' || typeof event.flags == 'undefined') {
 
-                return throwError('One or more session events are corrupted.');
+                console.log('Session event corrupted at index: ' + i);
+                session.events.splice(i, 1);
+                i--;
+                continue;
             }
 
             event.date = session.date + event.time;
@@ -56,11 +70,24 @@ export default class AuroraSessionParser {
 
         if (session.streams) {
 
-            for (const stream of session.streams) {
+            for (let i = 0; i < session.streams.length; i++) {
+
+                const stream = session.streams[i];
+
+                if (typeof stream != 'object'){
+
+                    console.log('Missing stream at index: ' + i);
+                    session.streams.splice(i, 1);
+                    i--;
+                    continue;
+                }
 
                 if (typeof stream.id == 'undefined' || typeof stream.time == 'undefined' || typeof stream.type == 'undefined' || !stream.file) {
 
-                    return throwError('One or more session streams are corrupted.');
+                    console('Session stream corrupted at index: ' + i);
+                    session.streams.splice(i, 1);
+                    i--;
+                    continue;
                 }
 
                 stream.date = session.date + stream.time;
@@ -70,6 +97,7 @@ export default class AuroraSessionParser {
         let firstSignalStageTime = 0;
         let currentStage = 0;
         let currentStageTime = 0;
+        let currentStageDate = 0;
 
         const stageDurations = new Array(Object.keys(SleepStages).length).fill(0);
 
@@ -110,6 +138,7 @@ export default class AuroraSessionParser {
                     //update current stage/time
                     currentStage = stage;
                     currentStageTime = event.time;
+                    currentStageDate = event.date;
 
                     break;
 
@@ -137,6 +166,24 @@ export default class AuroraSessionParser {
         if (session.sleepDuration.total) {
 
             session.sleepScore = Math.floor((session.sleepDuration.deep + session.sleepDuration.rem) / session.sleepDuration.total * 200);
+        }
+
+        //if we have a complete session with a valid sleep start time
+        //figure out when the awake time occurred
+        if (session.asleepAt && !session.incomplete) {
+
+            //is the last stage was awake (as it should be in the general case)
+            //we can use the last stage time as the awake time
+            if (currentStage == SleepStages.AWAKE){
+
+                session.awakeAt = currentStageDate;
+            }
+            //for any other known stages, (/or if the last known stage was short enough)
+            //we'll just use the session end time
+            else if (currentStage != SleepStages.UNKNOWN || (session.duration - currentStageTime) < (1000 * 60 * 15)){
+
+                session.awakeAt = session.date + session.duration;
+            }
         }
 
         return Promise.resolve(session);
