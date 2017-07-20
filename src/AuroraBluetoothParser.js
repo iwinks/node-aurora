@@ -181,8 +181,6 @@ export default class AuroraBluetoothParser extends EventEmitter {
 
                 if (this._cmd) {
                     
-                    console.log(statusBuffer.toString());
-
                     this._cmd.response = this._cmdResponseParser.getResponse();
                     this._cmd.error = statusBuffer[1] !== 0;
 
