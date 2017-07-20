@@ -136,30 +136,21 @@ test('Final test.', (t) => {
 });
 
 
-
 auroraTest('any', 'Testing generic command execution over ${connector}...', (t, connector) => {
 
     const testCmd = (cmdLine, responseType, isError = false) => {
 
         return aurora.queueCmd(cmdLine, connector)
-            .then(cmd => assertCommand(t, cmd, responseType, isError))
-            .catch(error => {
-
-                if (isError) return Promise.resolve();
-
-                return Promise.reject(error);
-
-            });
+            .catch(cmdWithError => cmdWithError)
+            .then(cmd => assertCommand(t, cmd, responseType, isError));
     };
 
     resetTest();
 
     return Promise.resolve()
         .then(() => testCmd('os-info', 'object'))
-        .then(() => testCmd('help', 'table'))
-        .then(() => testCmd('sd-dir-read profiles', 'table'))
-        .then(() => testCmd('asdf', 'object', true));
-
+        .then(() => testCmd('invalid-command', 'object', true))
+        .then(() => testCmd('sd-dir-read profiles', 'table'));
 });
 
 /*
@@ -248,7 +239,7 @@ auroraTest('usb', 'Testing application firmware flashing over ${connector}...', 
  });
  */
 
-
+/*
  auroraTest('usb', 'Testing bootloader firmware flashing over ${connector}...', (t, connector) => {
 
      resetTest();
@@ -263,6 +254,7 @@ auroraTest('usb', 'Testing application firmware flashing over ${connector}...', 
      });
 
  });
+*/
 
 
 
@@ -272,17 +264,16 @@ auroraTest('any', 'Testing Aurora syncTime command over ${connector}...', (t, co
 
 });
 
-
 auroraTest('any', 'Testing Aurora downloadFile command over ${connector}...', (t, connector) => {
 
-    return aurora.downloadFile('profiles/rem-stim.prof', path.join(__dirname, 'rem-stim.prof'));
+    return aurora.downloadFile('profiles/default.prof', path.join(__dirname, 'default.prof'));
 
 });
 
 
 auroraTest('any', 'Testing Aurora uploadFile command over ${connector}...', (t, connector) => {
 
-    return aurora.uploadFile(path.join(__dirname, 'rem-stim.prof'), 'upload.test');
+    return aurora.uploadFile(path.join(__dirname, 'default.prof'), 'upload.test');
 
 });
 

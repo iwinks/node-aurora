@@ -59,7 +59,12 @@ exports.assertCommand = function(t, cmd, responseType, isError = false){
 
     if (isError) {
 
-        t.pass(`'${cmd.command}' ${cmd.origin} command responded with error.`);
+        if (cmd.error !== false){
+            t.pass(`'${cmd.command}' ${cmd.origin} command successfully responded with error.`);
+        }
+        else {
+            t.fail(`'${cmd.command}' ${cmd.origin} command was expected to fail.`);
+        }
     }
     else {
 

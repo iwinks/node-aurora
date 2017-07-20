@@ -512,11 +512,12 @@ class Aurora extends EventEmitter {
                 return cmd;
 
             })
-            .then((cmd) => {
+            .then(async (cmd) => {
 
                 cmd.outputStream.push(null);
 
                 if (cmd.error){
+            
                     this._cmdCurrent.reject(cmd);
                 }
                 else {
@@ -529,9 +530,13 @@ class Aurora extends EventEmitter {
 
                 this.emit('cmdEnd', cmd);
 
-                this._cmdCurrent = null;
-                this._processCmdQueue();
-
+                //todo this shouldn't be necessary!!
+                //figure out WTF is going on
+                setTimeout(() => {
+                    this._cmdCurrent = null;
+                    this._processCmdQueue();
+                }, 200);
+                
             });
     }
 
