@@ -20,7 +20,7 @@ module.exports = function(srcPath, writeStream = false, connector = 'any') {
     let crc;
     let stream;
 
-    return this.queueCmd(`sd-file-read ${srcFileName} ${srcFileDir}`, connector, (cmd) => {
+    return this.queueCmd(`sd-file-read ${srcFileName} ${srcFileDir} 0`, connector, (cmd) => {
 
         cmd.outputStream.on('data', (chunk) => {
             crc = crc32.unsigned(chunk, crc);
