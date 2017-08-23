@@ -48,7 +48,7 @@ export default class AuroraSessionParser {
 
             const event = session.events[i];
 
-            if (typeof event != 'object'){
+            if (!event || typeof event != 'object'){
 
                 //todo: fix this mess...
                 console.log('Missing event at index: ' + i);
@@ -74,7 +74,7 @@ export default class AuroraSessionParser {
 
                 const stream = session.streams[i];
 
-                if (typeof stream != 'object'){
+                if (!stream || typeof stream != 'object'){
 
                     console.log('Missing stream at index: ' + i);
                     session.streams.splice(i, 1);
