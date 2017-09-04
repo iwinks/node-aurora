@@ -271,3 +271,24 @@ exports.LogNamesToTypeIds = {
     ERRO: exports.LogTypeIds.ERROR,
     DBUG: exports.LogTypeIds.DEBUG
 };
+
+exports.BuzzerSongs = [
+    { file: 'arpeggio.buzz', title: 'Arpeggio'},
+    { file: 'axels-theme.buzz', title: 'Axel\s Theme'},
+    { file: 'bach-minuet.buzz', title: 'Bach Minuet'},
+    { file: 'bach-prelude.buzz', title: 'Bach Prelude'},
+    { file: 'chromatic-scale.buzz', title: 'Chromatic Scale'},
+    { file: 'debussy-arabesque.buzz', title: 'Debussy Arabesque'},
+    { file: 'freedom-jazz-dance.buzz', title: 'Freedom Jazz Dance'},
+    { file: 'grandfather-clock.buzz', title: 'Grandfather Clock'},
+    { file: 'la-cucaracha.buzz', title: 'La Cucaracha'},
+    { file: 'mario-theme.buzz', title: 'Mario Theme'},
+    { file: 'morning-mood.buzz', title: 'Morning Mood'},
+    { file: 'pink-panther-theme.buzz', title: 'Pink Panther Theme'},
+    { file: 'reveille.buzz', title: 'Reveille'},
+    { file: 'simpsons-theme.buzz', title: 'Simpson\s Theme'},
+    { file: 'spain.buzz', title: 'Spain'},
+    { file: 'while-tone-scale.buzz', title: 'Whole Tone Scale'},
+    { file: 'reveille.buzz', title: 'Reveille'},
+    { file: 'zelda-secret.buzz', title: 'Zelda Secret'}
+]
