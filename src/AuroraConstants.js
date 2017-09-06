@@ -288,7 +288,17 @@ exports.BuzzerSongs = [
     { file: 'reveille.buzz', title: 'Reveille'},
     { file: 'simpsons-theme.buzz', title: 'Simpson\s Theme'},
     { file: 'spain.buzz', title: 'Spain'},
-    { file: 'while-tone-scale.buzz', title: 'Whole Tone Scale'},
-    { file: 'reveille.buzz', title: 'Reveille'},
+    { file: 'whole-tone-scale.buzz', title: 'Whole Tone Scale'},
     { file: 'zelda-secret.buzz', title: 'Zelda Secret'}
-]
+];
+
+exports.LedColors = [
+    { name: 'white', value: '#FFFFFF'},
+    { name: 'red', value: '#FF0000'},
+    { name: 'orange',value: '#FFFF00'},
+    { name: 'pink', value: '#FF00FF'},
+    { name: 'cyan', value: '#00FFFF'},
+    { name: 'green', value: '#00FF00'},
+    { name: 'blue', value: '#0000FF'},
+    { name: 'yellow', value: '#FF7700'}
+];
