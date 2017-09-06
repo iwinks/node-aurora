@@ -746,6 +746,8 @@ Object.defineProperty(Aurora.prototype, 'getProfiles', {value: require('./Aurora
 Object.defineProperty(Aurora.prototype, 'setProfiles', {value: require('./AuroraCmdSetProfiles')});
 Object.defineProperty(Aurora.prototype, 'getSessions', {value: require('./AuroraCmdGetSessions')});
 Object.defineProperty(Aurora.prototype, 'downloadStream', {value: require('./AuroraCmdDownloadStream')});
+Object.defineProperty(Aurora.prototype, 'playBuzzSong', {value: require('./AuroraCmdPlayBuzzSong')});
+Object.defineProperty(Aurora.prototype, 'playLedEffect', {value: require('./AuroraCmdPlayLedEffect')});
 
 export default new Aurora();
 
