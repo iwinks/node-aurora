@@ -304,42 +304,8 @@ exports.LedColors = [
 ];
 
 exports.LedEffects = [
-    { name: 'set', cmd: 'led-set', default: {
-        eyes: 'both', 
-        color: '#ffffff', 
-        brightness: 100, 
-        shutoffDelay: 5}
-    },
-    { name: 'blink', cmd: 'led-blink', default: {
-        eyes: 'both',
-        color: '#FF0000',
-        brightness: 100,
-        blinkRate: .5,
-        blinkCount: 5,
-        shutoffDelay: 0
-    }},
-    { name: 'alternate', cmd: 'led-alternate', default: {
-        state1Eyes: 'both',
-        state1Color: '#FF0000',
-        state1Brightness: 100,
-        state1Duration: 1,
-        state2Eyes: 'both',
-        state2Color: '#00FF00',
-        state2Brightness: 100,
-        state2Duration: .5,
-        alternateCount: 4,
-        shutoffDelay: 0
-    }},
-    { name: 'transition', cmd: 'led-transition', default: {
-        effect: 'transition',
-        state1Eyes: 'both',
-        state1Color: '#FF0000',
-        state1Brightness: 100,
-        state2Eyes: 'both',
-        state2Color: '#0000FF',
-        state2Brightness: 100,
-        transitionDuration: 5,
-        transitionRewind: true,
-        shutoffDelay: 0
-    }}
+    { name: 'set', cmd: 'led-set'},
+    { name: 'blink', cmd: 'led-blink'},
+    { name: 'alternate', cmd: 'led-alternate'},
+    { name: 'transition', cmd: 'led-transition'}
 ];
