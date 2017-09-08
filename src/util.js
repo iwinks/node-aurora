@@ -125,15 +125,15 @@ exports.stringToVersion = (versionString) => {
 
 exports.buzzSongObjToCmd = (songObj) => {
 
-    let {song, repeats, volume, tempoAdjust, pitchAdjust} = songObj;
+    let {song, repeat, volume, tempoAdjust, pitchAdjust} = songObj;
 
     if (!song) throw new Error("Song field is required.");
 
-    repeats = parseInt(repeats);
+    repeat = parseInt(repeat);
 
-    if (isNaN(repeats)){
+    if (isNaN(repeat)){
 
-        repeats = 0;
+        repeat = 0;
     }
 
     volume = parseInt(volume);
@@ -143,7 +143,7 @@ exports.buzzSongObjToCmd = (songObj) => {
     tempoAdjust = isNaN(tempoAdjust) ? 1 : Math.min(2.5, Math.max(.25, tempoAdjust));
 
     pitchAdjust = parseInt(pitchAdjust);
-    pitchADjust = isNaN(pitchAdjust) ? 0 : Math.min(12, Math.max(-12, pitchAdjust));
+    pitchAdjust = isNaN(pitchAdjust) ? 0 : Math.min(12, Math.max(-12, pitchAdjust));
 
     return `buzz-song ${song} ${repeat} ${volume} ${tempoAdjust} ${pitchAdjust}`;
 };
@@ -163,20 +163,20 @@ exports.ledEffectObjToCmd = (effectObj) => {
 
         if (typeof eyesOption == 'string'){
 
-            switch (eyesOptions.toLowerCase()){
+            switch (eyesOption.toLowerCase()){
 
                 case 'right': 
-                    return 2;
+                    return '0x02';
 
                 case 'left': 
-                    return 1;
+                    return '0x01';
 
                 case 'none': 
-                    return 0;
+                    return '0x00';
 
                 case 'both':
                 default:
-                    return 3;
+                    return '0x03';
             }
         }
         else {
@@ -200,10 +200,10 @@ exports.ledEffectObjToCmd = (effectObj) => {
         const brightness = parseInt(brightnessOption);
 
         if (isNaN(brightness) || brightness > 255 || brightness < 0){
-            return 255;
+            return '0xFF';
         }
 
-        return brightness * (255 / 100);
+        return '0x' + ("00" + (Math.round(brightness * (255 / 100))).toString(16)).slice(-2).toUpperCase();
     });
 
     const [
@@ -223,7 +223,7 @@ exports.ledEffectObjToCmd = (effectObj) => {
         color = !color ? colorOption : color.value;
         color = color.replace('#','0x');
 
-        return isNaN(parseInt(color)) ? '0x000000' : color;
+        return isNaN(parseInt(color)) ? '0x000000' : color.toUpperCase();
 
     });
 
@@ -241,37 +241,32 @@ exports.ledEffectObjToCmd = (effectObj) => {
             return 1000;
         }
         
-        return Math.floor(duration*1000);
+        return Math.round(duration*1000);
     });
 
-    let shutdownDelay = parseInt(effectObj.shutdownDelay);
-    shutdownDelay = isNaN(shutdownDelay) ? 0 : shutdownDelay * 1000;
+    let shutoffDelay = parseInt(effectObj.shutoffDelay);
+    shutoffDelay = isNaN(shutoffDelay) ? 0 : Math.round(shutoffDelay * 1000);
 
     switch (effect.name){
 
         case 'set':
-            return `${effect.cmd} ${eyes} ${color} ${brightness} ${shutdownDelay}`;
+            return `${effect.cmd} ${eyes} ${color} ${brightness} ${shutoffDelay}`;
 
         case 'blink':
             let blinkCount = parseInt(effectObj.blinkCount);
             blinkCount = isNaN(blinkCount) ? 1 : blinkCount;
-            let blinkRate = parseInt(effectObj.blinkRate);
-            blinkRate = isNaN(blinkRate) ? 500 : blinkRate*1000;
-            return `${effect.cmd} ${eyes} ${color} ${brightness} ${blinkCount} ${blinkRate} ${shutdownDelay}`;
+            let blinkRate = parseFloat(effectObj.blinkRate);
+            blinkRate = isNaN(blinkRate) ? 500 : Math.round(blinkRate*1000);
+            return `${effect.cmd} ${eyes} ${color} ${brightness} ${blinkCount} ${blinkRate} ${shutoffDelay}`;
 
         case 'alternate':
             let alternateCount = parseInt(effectObj.alternateCount);
             alternateCount = isNaN(alternateCount) ? 1 : alternateCount;
-            return `${effect.cmd} ${state1Eyes} ${state1Color} ${state1Brightness}
-                    ${state1Duration} ${state2Eyes} ${state2Color} ${state2Brighntess}
-                    ${state2Duration} ${alternateCount} ${shutdownDelay}`;
+            return `${effect.cmd} ${state1Eyes} ${state1Color} ${state1Brightness} ${state1Duration} ${state2Eyes} ${state2Color} ${state2Brightness} ${state2Duration} ${alternateCount} ${shutoffDelay}`;
 
         case 'transition':
             let transitionRewind = effectObj.transitionRewind ? 1 : 0;
-            return `${effect.cmd} ${state1Eyes} ${state1Color} ${state1Brightness}
-                    ${state2Eyes} ${state2Color} ${state2Brighntess}
-                    ${transitionDuration} ${transitionRewind} ${shutdownDelay}`;
-
+            return `${effect.cmd} ${state1Eyes} ${state1Color} ${state1Brightness} ${state2Eyes} ${state2Color} ${state2Brightness} ${transitionDuration} ${transitionRewind} ${shutoffDelay}`;
     }
 
 };
