@@ -45,7 +45,7 @@ exports.parseValueString = (value) => {
     }
 
     //support the funky date format GCC uses for __TIME__ constant
-    let date = moment(value, [
+    let date = moment.utc(value, [
         moment.ISO_8601,
         "YYYY-MM-DD HH:mm:ss:SSS",
         "MMM D YYYY - HH:mm:ss",
