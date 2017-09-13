@@ -14,7 +14,7 @@ const cmdResponseSuccess = {
         versionString: 'v1.0.1',
         version: 10001,
         board: 'iWinks Aurora v1 rev3',
-        buildDate: +(new Date(2017,0,1,5,5,5)),
+        buildDate: Date.UTC(2017,0,1,5,5,5),
         bytesFree: 5555,
         batteryLevel: 100,
         runningTime: '5.20 h',
