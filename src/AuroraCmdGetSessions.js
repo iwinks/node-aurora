@@ -1,6 +1,8 @@
 import AuroraTransformObject from './AuroraTransformObject';
 import AuroraSessionParser from './AuroraSessionParser';
 import moment from 'moment';
+import stream from 'stream';
+import {promisifyStream} from './util';
 
 module.exports = async function(connector = 'any') {
 
@@ -34,7 +36,7 @@ module.exports = async function(connector = 'any') {
             //make sure text file exists and it's size is reasonable
             if (!sessionTxtFile || sessionTxtFile.size < 75 || sessionTxtFile.size > 512*1024) continue;
 
-            readSessionTxtCmd = await this.readFile(`${sessionDir.name}/session.txt`, new AuroraTransformObject(), connector);
+            readSessionTxtCmd = await this.readFile(`${sessionDir.name}/session.txt`, false, connector);
         }
         catch (error) {
 
@@ -44,13 +46,30 @@ module.exports = async function(connector = 'any') {
         let session = {
             name: sessionDir.name.split('/').pop(),
             auroraDir: sessionDir.name,
-            content: readSessionTxtCmd.output[0],
+            content: readSessionTxtCmd.output,
             streams: []
         };
 
         try {
 
-            const parsedSession = await AuroraSessionParser.parseSessionTxtObject(session.content);
+            let sessionTxtObject;
+            let sessionTxtStream = new stream.Readable();
+
+            sessionTxtStream._read = () => {};
+    
+            sessionTxtStream.push(session.content);
+            sessionTxtStream.push(null);
+            
+            sessionTxtStream = sessionTxtStream.pipe(new AuroraTransformObject());
+            
+            sessionTxtStream.on('data', (data) => {
+                
+                sessionTxtObject = data;
+            });
+            
+            await promisifyStream(sessionTxtStream);
+
+            const parsedSession = await AuroraSessionParser.parseSessionTxtObject(sessionTxtObject);
 
             Object.assign(session, parsedSession);
 
