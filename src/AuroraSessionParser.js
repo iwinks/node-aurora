@@ -51,7 +51,7 @@ export default class AuroraSessionParser {
             if (!event || typeof event != 'object'){
 
                 //todo: fix this mess...
-                console.log('Missing event at index: ' + i);
+                //console.log('Missing event at index: ' + i);
                 session.events.splice(i, 1);
                 i--;
                 continue;
@@ -59,7 +59,7 @@ export default class AuroraSessionParser {
 
             if (typeof event.id == 'undefined' || typeof event.time == 'undefined' || typeof event.flags == 'undefined') {
 
-                console.log('Session event corrupted at index: ' + i);
+                //console.log('Session event corrupted at index: ' + i);
                 session.events.splice(i, 1);
                 i--;
                 continue;
@@ -76,7 +76,7 @@ export default class AuroraSessionParser {
 
                 if (!stream || typeof stream != 'object'){
 
-                    console.log('Missing stream at index: ' + i);
+                    //console.log('Missing stream at index: ' + i);
                     session.streams.splice(i, 1);
                     i--;
                     continue;
@@ -84,7 +84,7 @@ export default class AuroraSessionParser {
 
                 if (typeof stream.id == 'undefined' || typeof stream.time == 'undefined' || typeof stream.type == 'undefined' || !stream.file) {
 
-                    console('Session stream corrupted at index: ' + i);
+                    //console('Session stream corrupted at index: ' + i);
                     session.streams.splice(i, 1);
                     i--;
                     continue;

@@ -67,35 +67,24 @@ class Aurora extends EventEmitter {
         return !!this._msdDrive;
     }
 
-    connect() {
+    autoconnectUsb() {
 
         this._autoConnectUsb = true;
-        this._autoConnectBluetooth = true;
 
         if (!this._auroraUsb.isConnected() && !this._auroraUsb.isConnecting()){
 
             this._auroraUsb.connect().catch(() => {});
         }
 
-        if (!this._auroraBluetooth.isConnected() && !this._auroraBluetooth.isConnecting()){
-
-            this._auroraBluetooth.connect(0).catch(() => {});
-        }
     }
 
-    disconnect() {
+    autoconnectBluetooth() {
 
-        this._autoConnectUsb = false;
-        this._autoConnectBluetooth = false;
+        this._autoConnectBluetooth = true;
 
-        if (this._auroraUsb.isConnected()){
-
-            this.disconnectUsb();
-        }
-
-        if (this._auroraBluetooth.isConnected()){
-
-            this.disconnectBluetooth();
+        if (!this._auroraBluetooth.isConnected() && !this._auroraBluetooth.isConnecting()){
+            
+            this._auroraBluetooth.connect(0).catch(() => {});
         }
     }
 
@@ -127,6 +116,8 @@ class Aurora extends EventEmitter {
 
     async disconnectUsb() {
 
+        this._autoConnectUsb = false;
+        
         if (!this._auroraUsb.isConnected() && !this._auroraUsb.isConnecting()){
 
             return;
@@ -171,6 +162,8 @@ class Aurora extends EventEmitter {
 
     async disconnectBluetooth(){
 
+        this._autoConnectBluetooth = false;
+        
         if (!this._auroraBluetooth.isConnected() && !this._auroraBluetooth.isConnecting()){
 
             return;

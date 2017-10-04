@@ -92,7 +92,7 @@ module.exports = async function(connector = 'any') {
             //infer the date from the name of the session if we have to
             if (!sessionWithError.date || typeof sessionWithError != 'number'){
 
-                sessionWithError.date = moment(session.name, 'YYYY-MM-DD@HHmm').toDate();
+                sessionWithError.date = +moment.utc(session.name, 'YYYY-MM-DD@HHmm');
             }
 
             //TODO consider logging this event.
