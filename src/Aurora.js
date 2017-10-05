@@ -67,7 +67,7 @@ class Aurora extends EventEmitter {
         return !!this._msdDrive;
     }
 
-    autoconnectUsb() {
+    autoConnectUsb() {
 
         this._autoConnectUsb = true;
 
@@ -78,7 +78,7 @@ class Aurora extends EventEmitter {
 
     }
 
-    autoconnectBluetooth() {
+    autoConnectBluetooth() {
 
         this._autoConnectBluetooth = true;
 
@@ -596,7 +596,7 @@ class Aurora extends EventEmitter {
         }
         else if (device.productId  === parseInt(AuroraConstants.AURORA_USB_SERIAL_PID) && this._autoConnectUsb) {
 
-            this.connect();
+            this.autoConnectUsb();
         }
     };
 
