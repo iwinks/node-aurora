@@ -69,6 +69,7 @@ exports.assertCommand = function(t, cmd, responseType, isError = false){
     else {
 
         t.assert(cmd && cmd.error === false, `'${cmd.command}' ${cmd.origin} command executed successfully.`);
+        console.log(cmd.response);
     }
 
     switch (responseType) {

@@ -165,7 +165,7 @@ export default class AuroraSessionParser {
 
         if (session.sleepDuration.total) {
 
-            session.sleepScore = Math.floor((session.sleepDuration.deep + session.sleepDuration.rem) / session.sleepDuration.total * 200);
+            session.sleepScore = Math.floor((session.sleepDuration.deep + session.sleepDuration.rem) / session.sleepDuration.total * 100);
         }
 
         //if we have a complete session with a valid sleep start time

@@ -36,7 +36,7 @@
     "babel-preset-es2017": "^6.14.0",
     "babel-preset-stage-0": "^6.5.0",
     "babel-register": "^6.9.0",
-    "sinon": "^3.2.0",
+    "sinon": "^4.0.1",
     "tap-difflet": "^0.7.0",
     "tape": "^4.6.0"
   },
@@ -52,7 +52,7 @@
     "moment": "^2.13.0",
     "noble": "^1.8.1",
     "node-fetch": "^1.6.3",
-    "serialport": "6.0.0-beta1",
+    "serialport": "github:emergingtechnologyadvisors/node-serialport#master",
     "split": "^1.0.0",
     "usb-detection": "github:iwinks/node-usb-detection"
   }

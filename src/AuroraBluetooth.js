@@ -118,7 +118,7 @@ export default class AuroraBluetooth extends EventEmitter {
             //these get used a lot, so let's store references
             this._cmdStatusChar = this._characteristicsByUUID[BleAuroraChars.CMD_STATUS];
             this._cmdDataChar = this._characteristicsByUUID[BleAuroraChars.CMD_DATA];
-            this._cmdOutputChar = this._characteristicsByUUID[BleAuroraChars.CMD_OUTPUT_NOTIFIED];
+            this._cmdOutputChar = this._characteristicsByUUID[BleAuroraChars.CMD_OUTPUT_INDICATED];
 
             await this._charSubscribe(this._characteristicsByUUID[BleAuroraChars.STREAM_DATA_NOTIFIED], this._onParseStreamData);
 

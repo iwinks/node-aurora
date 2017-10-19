@@ -149,6 +149,7 @@ auroraTest('any', 'Testing generic command execution over ${connector}...', (t, 
 
     return Promise.resolve()
         .then(() => testCmd('os-info', 'object'))
+        .then(() => testCmd('ble-info 1', 'object'))
         .then(() => testCmd('invalid-command', 'object', true))
         .then(() => testCmd('sd-dir-read profiles', 'table'));
 });
@@ -264,16 +265,18 @@ auroraTest('any', 'Testing Aurora syncTime command over ${connector}...', (t, co
 
 });
 
+/*
 auroraTest('any', 'Testing Aurora downloadFile command over ${connector}...', (t, connector) => {
 
-    return aurora.downloadFile('profiles/default.prof', path.join(__dirname, 'default.prof'));
+    return aurora.downloadFile('sdcard.test', path.join(__dirname, 'default.prof'));
 
 });
+*/
 
 
 auroraTest('any', 'Testing Aurora uploadFile command over ${connector}...', (t, connector) => {
 
-    return aurora.uploadFile(path.join(__dirname, 'default.prof'), 'upload.test');
+    return aurora.uploadFile(path.join(__dirname, 'sdcard.test'), 'upload.test');
 
 });
 
