@@ -3,11 +3,6 @@ import SerialPort from 'serialport';
 import AuroraSerialParser from './AuroraSerialParser';
 import {sleep, promisify} from './util';
 
-const serialOptions = {
-
-    baudrate: 38400
-};
-
 const CONNECT_RETRY_DELAY_MS = 1500;
 const DISCONNECT_RETRY_DELAY_MS = 3000;
 
@@ -337,7 +332,7 @@ export default class AuroraUsb extends EventEmitter {
 
         return new Promise((resolve, reject) => {
 
-            const serialPort = new SerialPort(port, serialOptions, (error) => {
+            const serialPort = new SerialPort(port, (error) => {
 
                 if (error) return reject(error);
 
