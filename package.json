@@ -52,7 +52,7 @@
     "moment": "^2.13.0",
     "noble": "^1.8.1",
     "node-fetch": "^1.6.3",
-    "serialport": "6.0.0-beta1",
+    "serialport": "6.0.4",
     "split": "^1.0.0",
     "usb-detection": "github:iwinks/node-usb-detection"
   }
