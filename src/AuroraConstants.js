@@ -171,22 +171,22 @@ exports.StreamIds = {
     SLEEP_FEATURES: 16,
     SLEEP_STAGES: 17,
     SLEEP_TRACKER: 18,
-    STREAM_RESERVED6: 19,
+    EEG_DELTA: 19,
 
-    STREAM_RESERVED7: 20,
-    STREAM_RESERVED8: 21,
-    STREAM_RESERVED9: 22,
-    STREAM_RESERVED10: 23,
+    EEG_THETA: 20,
+    EEG_ALPHA: 21,
+    EEG_BETA: 22,
+    EEG_GAMMA: 23,
 
     ACCEL_MAGNITUDE: 24,
     GYRO_MAGNITUDE: 25,
     ROTATION_ROLL: 26,
     ROTATION_PITCH: 27,
     
-    STREAM_RESERVED11: 28,
-    STREAM_RESERVED12: 29,
-    STREAM_RESERVED13: 30,
-    STREAM_RESERVED14: 31
+    ACCEL_STDDEV: 28,
+    EEG_POWER_SUM: 29,
+    STREAM_RESERVED6: 30,
+    STREAM_RESERVED7: 31
 };
 
 exports.STREAM_ID_MAX = 31;
@@ -216,20 +216,20 @@ exports.StreamIdsToNames = {
     [exports.StreamIds.SLEEP_FEATURES]: 'sf',
     [exports.StreamIds.SLEEP_STAGES]: 'ss',
     [exports.StreamIds.SLEEP_TRACKER]: 'st',
-    [exports.StreamIds.STREAM_RESERVED6]: 'rsvd6',
+    [exports.StreamIds.EEG_DELTA]: 'eeg-delta',
 
-    [exports.StreamIds.STREAM_RESERVED7]: 'rsvd7',
-    [exports.StreamIds.STREAM_RESERVED8]: 'rsvd8',
-    [exports.StreamIds.STREAM_RESERVED9]: 'rsvd9',
-    [exports.StreamIds.STREAM_RESERVED10]: 'rsvd10',
+    [exports.StreamIds.EEG_THETA]: 'eeg-theta',
+    [exports.StreamIds.EEG_ALPHA]: 'eeg-alpha',
+    [exports.StreamIds.EEG_BETA]: 'eeg-beta',
+    [exports.StreamIds.EEG_GAMMA]: 'eeg-gamma',
 
     [exports.StreamIds.ACCEL_MAGNITUDE]: 'accel-mag',
     [exports.StreamIds.GYRO_MAGNITUDE]: 'gyro-mag',
     [exports.StreamIds.ROTATION_ROLL]: 'roll',
     [exports.StreamIds.ROTATION_PITCH]: 'pitch',
 
-    [exports.StreamIds.STREAM_RESERVED11]: 'rsvd11',
-    [exports.StreamIds.STREAM_RESERVED12]: 'rsvd12',
+    [exports.StreamIds.ACCEL_STDDEV]: 'accel-sd',
+    [exports.StreamIds.EEG_POWER_SUM]: 'eeg-powsum',
     [exports.StreamIds.STREAM_RESERVED13]: 'rsvd13',
     [exports.StreamIds.STREAM_RESERVED14]: 'rsvd14'
 };

@@ -1,6 +1,7 @@
 import EventEmitter from 'events';
 import SerialPort from 'serialport';
 import AuroraSerialParser from './AuroraSerialParser';
+import AuroraConstants from './AuroraConstants';
 import {sleep, promisify} from './util';
 
 const CONNECT_RETRY_DELAY_MS = 1500;
@@ -29,7 +30,7 @@ export default class AuroraUsb extends EventEmitter {
                 if ((port.pnpId && port.pnpId.indexOf('5740') !== -1) ||
                     (port.pnpId && port.pnpId.indexOf('0483') !== -1) ||
                     (port.productId && port.productId.indexOf('5740') !== -1) ||
-                    (port.vendorId && port.vendorId.indexOf(AURORA_USB_VID) !== -1) ||
+                    (port.vendorId && port.vendorId.indexOf(AuroraConstants.AURORA_USB_VID) !== -1) ||
                     port.manufacturer == "iWinks") {
 
                     auroraPorts.push(port.comName.replace('cu.','tty.'));
@@ -128,7 +129,7 @@ export default class AuroraUsb extends EventEmitter {
                         }
                         catch (error) {
 
-                            console.log('caught error', error);
+                            //console.log('detect error', error);
 
                         } //swallow this error
                     }
@@ -145,6 +146,8 @@ export default class AuroraUsb extends EventEmitter {
                 }
             }
             catch (error) {
+
+                //console.log('main error', error);
 
                 continue;
             }
