@@ -1,55 +1,54 @@
-import Aurora from "./Aurora";
-import AuroraCmd from "./AuroraCmd";
-import AuroraCmdTransformBinary from "./AuroraCmdTransformBinary";
-import _ from "lodash";
+import {promisifyStream} from './util';
+import crc32 from 'buffer-crc32';
 
-export default class AuroraCmdReadFile extends AuroraCmd {
-    
-    static defaultOptions = {
-        
-        respTypeSuccess: AuroraCmd.RespTypes.STRING,
-        packetMode: true,
-        binaryDataType: false
-    };
-    
-    constructor(srcPath, options) {
+module.exports = function(srcPath, writeStream = false, connector = 'any') {
 
-        options =  _.defaultsDeep(options, AuroraCmdReadFile.defaultOptions);
+    let srcPathSegments = srcPath.split('/');
+
+    const srcFileName = srcPathSegments.pop();
+    const srcFileDir = srcPathSegments.length ? srcPathSegments.join('/') : '/';
+
+    /*
+    if (connector != 'bluetooth' && this.isMsdAttached()){
 
 
-        let srcPathSegments = srcPath.split('/');
-
-        let args = [
-            srcPathSegments.pop(),
-            srcPathSegments.length ? srcPathSegments.join('/') : '/',
-            options.packetMode
-        ];
-        
-        super('sd-file-read', args, options);
-
-        this.srcPath = srcPath;
     }
-    
-    exec(){
+    */
 
-        //disable packet mode for old aurora firmware
-        //TODO: remove once stable
-        if (Aurora.firmwareInfo.version.number < 900){
-            this.args[2] = false;            //TODO: don't store args like this...
-            this.options.packetMode = false; //for this very reason
+
+    const outputChunks = [];
+    let crc;
+    let stream;
+
+    return this.queueCmd(`sd-file-read ${srcFileName} ${srcFileDir} 0`, connector, (cmd) => {
+
+        cmd.outputStream.on('data', (chunk) => {
+            crc = crc32.unsigned(chunk, crc);
+        });
+
+        stream = cmd.outputStream;
+
+        if (writeStream){
+
+            stream = stream.pipe(writeStream);
         }
 
-        super.exec();
-    }
+        stream.on('data', (chunk) => {
+            outputChunks.push(chunk);
+        });
 
-    _setupRespSuccess() {
-        
-        super._setupRespSuccess();
+    }).then(cmdWithResponse => {
 
-        if (this.options.binaryDataType !== false){
-        
-            this.respSuccessStreamBack = this.respSuccessStreamBack.pipe(new AuroraCmdTransformBinary({dataType: this.options.binaryDataType}));
-        }
+        return promisifyStream(stream).then(() => {
 
-    }
-}
+            if (cmdWithResponse.response.crc != crc) return Promise.reject('CRC failed.');
+
+            cmdWithResponse.output = writeStream ? outputChunks : outputChunks.map(String).join('');
+
+            return cmdWithResponse;
+
+        });
+
+    });
+
+};

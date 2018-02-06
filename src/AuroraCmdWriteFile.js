@@ -1,56 +1,43 @@
-import Aurora from "./Aurora";
-import AuroraCmd from "./AuroraCmd";
-import _ from 'lodash';
+import Stream from 'stream';
+import crc32 from 'buffer-crc32';
 
-export default class AuroraCmdWriteFile extends AuroraCmd {
+module.exports = function(destPath, dataOrReadStream, rename = false, connector = 'any') {
 
-    static defaultOptions = {
+    let destPathSegments = destPath.split('/');
 
-        renameIfExisting: false,
-        silentMode: true,
-        respTypeSuccess: AuroraCmd.RespTypes.OBJECT
-    };
+    const destFileName = destPathSegments.pop();
+    const destFileDir = destPathSegments.length ? destPathSegments.join('/') : '/';
 
-    constructor(destPath, content, options) {
+    let crc;
+    let stream = dataOrReadStream;
 
-        super('sd-file-write');
+    //convert to stream in case of string or buffer
+    if (typeof dataOrReadStream == 'string' || Buffer.isBuffer(dataOrReadStream)){
 
-        this.options = _.defaultsDeep(options, AuroraCmdWriteFile.defaultOptions);
-
-        this.destPath = destPath;
-
-        let destPathSegments = destPath.split('/');
-
-        this.destFile = destPathSegments.pop();
-        this.destDir = destPathSegments.length ? destPathSegments.join('/') : '/';
-
-        this.args = [ this.destFile, this.options.renameIfExisting, this.destDir, this.options.silentMode];
-        this.content = content;
+        stream = new Stream.Readable();
+        stream._read = () => {};
+        stream.push(dataOrReadStream.toString());
+        stream.push(null);
     }
 
-    exec() {
+    stream.pause();
+    stream.on('data', (chunk) => {
+        crc = crc32.unsigned(chunk, crc);
+    });
 
-        super.exec();
+    return this.queueCmd(`sd-file-write ${destFileName} ${destFileDir} ${rename ? 1 : 0} 1 500`, connector, (cmd) => {
 
-        if (typeof this.content == 'string') {
+        this.once('cmdInputRequested', (inputStream) => {
+            stream.pipe(inputStream);
+            stream.resume();
+        });
 
-            Aurora.write(this.content + '\r\r\r\r');
-        }
-        else {
+    }).then(cmdWithResponse => {
 
-            let readStream = this.content;
+        if (cmdWithResponse.response.crc != crc) return Promise.reject('CRC failed.');
 
-            readStream.on('end', () => {
+        return cmdWithResponse;
 
-                Aurora.write('\r\r\r\r');
-                readStream.removeAllListeners();
-            }).on('data', (data) => {
+    });
 
-                this.petWatchdog();
-                Aurora.write(data);
-            });
-        }
-
-    }
-
-}
+};

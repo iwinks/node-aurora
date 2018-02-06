@@ -1,38 +1,53 @@
-import AuroraCmd from "./AuroraCmd";
-import AuroraCmdReadFile from "./AuroraCmdReadFile";
-import _ from "lodash";
+import split from 'split';
 
-export default class AuroraCmdGetProfiles extends AuroraCmdReadFile {
+module.exports = async function(connector = 'any') {
 
-    static defaultOptions = {
+    const profileListReadResp = await this.readFile('profiles/_profiles.list', split(), connector);
 
-        respTypeSuccess: AuroraCmd.RespTypes.ARRAY,
-        includeContent: true //TODO: figure out how to do composite commands so this can actually do something...
-    };
+    const profilesInList = profileListReadResp.output.filter(String).map((prof, index) => {
 
-    constructor(options) {
+        const profile = {};
+        const profParts = prof.trim().split(':');
 
-        super('profiles/_profiles.list', _.defaultsDeep(options, AuroraCmdGetProfiles.defaultOptions));
-    }
+        if (profParts.length == 3){
 
-    onRespSuccessData(profileLines){
+            profile.active = false;
+            profile.name = profParts[1];
+            profile.id = profParts[2];
+        }
+        else {
 
-        if (!Array.isArray(profileLines)){
-
-            profileLines = [profileLines];
+            profile.active = true;
+            profile.name = profParts[0];
+            profile.id = profParts[1];
         }
 
-        for (let profileLine of profileLines){
+        profile.key = `${index}_${profile.id}_${profile.name}`;
 
-            let p = profileLine.split(':');
-            let profile = {
-                name: p[0],
-                id: p.length > 1 ? p[1] : _.uniqueId('custom_')
-            };
+        return profile;
 
-            this.respSuccess = this.respSuccess.concat(profile);
+    });
+
+    const {response} = await this.queueCmd('sd-dir-read profiles 1 *.prof', connector);
+    const profiles = [];
+
+    for (let profile of response) {
+
+        try {
+
+            const readCmdWithResponse = await this.readFile(`profiles/${profile.name}`, false, connector);
+
+            const p = {active: false, content: readCmdWithResponse.output, key: '_' + profile.name};
+
+            Object.assign(p, profile, profilesInList.find((prof) => prof.name == profile.name));
+
+            profiles.push(p);
         }
+        catch (error) {
 
+        }
     }
 
-}
+   return profiles.sort((a,b) => a.key > b.key ? 1 : (a.key < b.key ? -1 : 0));
+
+};

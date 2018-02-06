@@ -1,491 +1,747 @@
-import SerialPort from 'serialport';
-import usbDetect from 'usb-detection';
-import AuroraCmd from './AuroraCmd';
-import AuroraCmdReadFile from './AuroraCmdReadFile';
-import AuroraCmdCopyFile from './AuroraCmdCopyFile';
-import AuroraCmdDeleteDir from './AuroraCmdDeleteDir';
-import AuroraCmdDeleteFile from './AuroraCmdDeleteFile';
-import AuroraCmdDownloadFile from './AuroraCmdDownloadFile';
-import AuroraCmdFlash from './AuroraCmdFlash';
-import AuroraCmdGetProfiles from './AuroraCmdGetProfiles';
-import AuroraCmdOsInfo from './AuroraCmdOsInfo';
-import AuroraCmdReadDir from './AuroraCmdReadDir';
-import AuroraCmdSessionInfo from './AuroraCmdSessionInfo';
-import AuroraCmdSyncTime from './AuroraCmdSyncTime';
-import AuroraCmdSdFormat from './AuroraCmdSdFormat';
-import AuroraCmdWriteFile from './AuroraCmdWriteFile';
-import AuroraCmdUnloadProfile from './AuroraCmdUnloadProfile';
-import AuroraCmdEnableEventOutput from './AuroraCmdEnableEventOutput';
-import AuroraCmdDisableEventOutput from './AuroraCmdDisableEventOutput';
-import AuroraCmdLedSet from './AuroraCmdLedSet';
-import AuroraCmdLedBlink from './AuroraCmdLedBlink';
-import AuroraCmdLedAlternate from './AuroraCmdLedAlternate';
-import AuroraCmdLedTransition from './AuroraCmdLedTransition';
+import AuroraUsb from './AuroraUsb';
+import AuroraBluetooth from './AuroraBluetooth';
+import DriveList from 'drivelist';
+import ejectMedia from 'eject-media';
 import AuroraConstants from './AuroraConstants';
-import AuroraResponseSerialParser from './AuroraResponseSerialParser';
 import EventEmitter from 'events';
-import fs from 'fs';
-import _ from 'lodash';
+import Stream from 'stream';
+import {sleep, promisify, versionToString, stringToVersion} from './util';
+import usbDetect from 'usb-detection';
 
+const MSD_DISCONNECT_RETRY_DELAY_MS = 2000;
+const MSD_SCAN_RETRY_DELAY_MS = 2000;
+const MSD_CONNECT_DELAY_SEC = 30;
 
 class Aurora extends EventEmitter {
 
-    static defaultOptions = {
-
-        serialPort: 'auto',
-        serialOptions: {
-
-            baudrate: 38400,
-            autoOpen: false
-        },
-        enableLogging: false,
-        logFilePath: 'aurora-serial.log',
-        connectTimeout: 10000
-    };
-
-    constructor(options) {
+    constructor() {
 
         super();
 
-        this.options = _.defaultsDeep(options, Aurora.defaultOptions);
+        this._auroraUsb = new AuroraUsb();
+        this._auroraUsb.on('connectionStateChange', this._onUsbConnectionStateChange);
+        this._auroraUsb.on('usbError', this._onAuroraError);
+        this._auroraUsb.on('log', this._onAuroraLog);
+        this._auroraUsb.on('streamData', this._onAuroraStreamData);
+        this._auroraUsb.on('auroraEvent', this._onAuroraEvent);
+        this._auroraUsb.on('cmdInputRequested',this._onCmdInputRequested);
+        this._auroraUsb.on('cmdOutputReady', this._onCmdOutputReady);
 
-        this._processingQueue = [];
-        this.usbConnected = false;
-        this.usbConnecting = false;
-        this.cmdCurrent = false;
-        this.firmwareInfo = undefined;
+        this._auroraBluetooth = new AuroraBluetooth();
+        this._auroraBluetooth.on('connectionStateChange', this._onBluetoothConnectionStateChange);
+        this._auroraBluetooth.on('bluetoothError', this._onAuroraError);
+        this._auroraBluetooth.on('streamData', this._onAuroraStreamData);
+        this._auroraBluetooth.on('auroraEvent', this._onAuroraEvent);
+        this._auroraBluetooth.on('cmdInputRequested',this._onCmdInputRequested);
+        this._auroraBluetooth.on('cmdOutputReady', this._onCmdOutputReady);
 
-        this._responsePacketRetries = 0;
+        this._cmdQueue = [];
 
-        this.serialLogStream = this.options.enableLogging ? fs.createWriteStream(this.options.logFilePath) : null;
+        this._msdDrive = false;
+        this._isFlashing = false;
+        this._info = {};
 
-        this.on('serialDisconnect', this._onSerialDisconnect);
+        //this scans for MSD disks that could potentially be the Aurora
+        this._findMsdDrive().then(this._msdSetAttached, true);
 
-        AuroraResponseSerialParser.on('packetSuccess', this._onPacketSuccess);
-        AuroraResponseSerialParser.on('packetError', this._onPacketError);
-        AuroraResponseSerialParser.on('commandEnd', this._onCommandEnd);
-        AuroraResponseSerialParser.on('responseSuccess', this._onResponseSuccess);
-        AuroraResponseSerialParser.on('responseError', this._onResponseError);
-        AuroraResponseSerialParser.on('responseEvent', (eventId, eventFlags) => this.emit('event', eventId, eventFlags));
-        AuroraResponseSerialParser.on('responseLog', (type, message, date) => this.emit('log', type, message, date));
-        AuroraResponseSerialParser.on('responseData', (type, data) => this.emit('data', type, data));
-        
-
-        usbDetect.on('add:' + parseInt(AuroraConstants.AURORA_USB_VID), (device) => this.emit('usbConnect', device));
-        usbDetect.on('remove:' + parseInt(AuroraConstants.AURORA_USB_VID), (device) => this.emit('usbDisconnect', device));
+        this._watchUsb();
     }
 
-    setOptions(options) {
+    isConnected() {
 
-        //if log status is changing, we need to close the stream if it exists
-        if (options.enableLogging != this.options.enableLogging ||
-            options.logFilePath != this.options.logFilePath){
-
-            if (options.serialLogStream) this.serialLogStream.end();
-
-            this.serialLogStream = options.enableLogging ? fs.createWriteStream(options.logFilePath || this.options.logFilePath) : null;
-        }
-
-        this.options = _.defaultsDeep(this.options, options);
+        return this.isUsbConnected() || this.isBluetoothConnected();
     }
 
     isUsbConnected() {
 
-        return this.usbConnected;
+        return this._auroraUsb.isConnected();
     }
 
-    //TODO: this code will be refactored to not create a new SerialPort instance with
-    //each connection attempt once the node-serialport package has successfully implemented
-    //updateBaudRate on all platforms and fixes the usbConnect/disconnect event bugs
-    usbConnect() {
+    isBluetoothConnected() {
 
-        if (this.usbConnecting) {
-            return Promise.reject('Already connecting...');
+        return this._auroraBluetooth.isConnected();
+    }
+
+    isMsdAttached(){
+
+        return !!this._msdDrive;
+    }
+
+    autoConnectUsb() {
+
+        this._autoConnectUsb = true;
+
+        if (!this._auroraUsb.isConnected() && !this._auroraUsb.isConnecting()){
+
+            this._auroraUsb.connect().catch(() => {});
         }
 
-        if (this.usbConnected) {
-            return Promise.reject('Already connected.');
-        }
+    }
 
-        this.usbConnecting = true;
+    autoConnectBluetooth() {
+
+        this._autoConnectBluetooth = true;
+
+        if (!this._auroraBluetooth.isConnected() && !this._auroraBluetooth.isConnecting()){
+            
+            this._auroraBluetooth.connect(0).catch(() => {});
+        }
+    }
+
+    async connectUsb(port = 'detect', retryCount = 3) {
+
+        if (this._auroraUsb.isConnected()){
+
+            return Promise.reject('Already connected over usb.');
+        }
+        else if (this._auroraUsb.isConnecting()){
+
+            return Promise.reject('Already connecting over usb.');
+        }
 
         return new Promise((resolve, reject) => {
 
-            this.connectTimer = setTimeout(() => {
+            this.once('usbConnectionChange', (fwInfo) => {
 
-                this.usbConnecting = false;
-                
-                reject('Timeout while trying to connect to Aurora.');
+                if (!fwInfo) return reject();
 
-            }, this.options.connectTimeout);
+                resolve(fwInfo);
 
-            let tryConnect = (serialPorts) => {
+            });
 
-                let serialPort = serialPorts.pop();
-
-                this._serial = new SerialPort(serialPort, this.options.serialOptions);
-
-                this._serial.once('close', () => {
-
-                    console.log('serialDisconnect', 'expected');
-                    this.emit('serialDisconnect');
-                });
-
-                this._serial.once('disconnect', (e) => {
-
-                    console.log('serialDisconnect', e);
-                    this.emit('serialDisconnect', e);
-                });
-
-                this._serial.once('error', (e) => {
-
-                    this.emit('serialDisconnect', e);
-                    this.emit('error', e);
-                });
-
-                this._serial.open(error => {
-                    
-                    const handleError = (error) => {
-
-                        this._serial.removeAllListeners();
-
-                        if (!serialPorts.length) {
-
-                            this.usbConnecting = false;
-
-                            clearTimeout(this.connectTimer);
-
-                            return reject('Device not found. (' + this.options.serialPort + ')');
-                        }
-                        else {
-                            return tryConnect(serialPorts);
-                        }
-                    };
-
-                    if (error) {
-
-                        return handleError(error);
-                    }
-
-                    //make sure there aren't any dangling
-                    //characters on the command line
-                    this.write(_.repeat("\b", 64));
-
-                    this._serial.flush(() => {
-                        
-                        AuroraResponseSerialParser.reset();
-
-                        this._processingQueue = [];
-
-                        this._serial.addListener('data', this._processResponse.bind(this));
-
-                        this.execCmd(new AuroraCmdOsInfo()).then(firmwareInfo => {
-
-                            clearTimeout(this.connectTimer);
-
-                            this.firmwareInfo = firmwareInfo;
-
-                            this.usbConnecting = false;
-                            this.usbConnected = true;
-
-                            this.emit('serialConnect');
-
-                            resolve(firmwareInfo);
-
-                        }).catch((error) => {
-
-                            this._serial.close();
-
-                            handleError(error);
-
-                        });
-
-
-                        this._processQueue();
-
-                    });
-
-                });
-
-            };
-
-            if (this.options.serialPort == 'auto') {
-
-                SerialPort.list( (error, ports) => {
-
-                    if (error) {
-
-                        return reject(error);
-                    }
-                    
-                    let serialPorts = [];
-                    
-                    ports.forEach(function (port) {
-
-                        //TODO: remove these extra conditions when old beta
-                        //units are no longer in circulation
-                        if ((port.pnpId && port.pnpId.indexOf('5740') !== -1) ||
-                            (port.pnpId && port.pnpId.indexOf('0483') !== -1) ||
-                            (port.productId && port.productId.indexOf('5740') !== -1) ||
-                            (port.vendorId && port.vendorId.indexOf(AuroraConstants.AURORA_USB_VID) !== -1) ||
-                            port.manufacturer == "iWinks") {
-                                serialPorts.push(port.comName.replace('cu.','tty.'));
-                        }
-                    });
-
-                    if (!serialPorts.length) {
-                        this.usbConnecting = false;
-
-                        return reject('No Aurora devices found connected to computer.');
-                    }
-
-                    tryConnect(serialPorts);
-
-                });
-            }
-            else {
-                tryConnect([this.options.serialPort]);
-            }
+            this.detachMsd().then(() => this._auroraUsb.connect(port, retryCount)).catch(reject);
 
         });
-
     }
 
-    disconnect() {
+    async disconnectUsb() {
 
-        this._serial.close();
+        this._autoConnectUsb = false;
+        
+        if (!this._auroraUsb.isConnected() && !this._auroraUsb.isConnecting()){
+
+            return;
+        }
+
+        return this._auroraUsb.disconnect();
     }
 
-    write(data) {
+    async connectBluetooth(timeoutMs = 20000) {
 
-        if (this.usbConnected){
+        if (this._auroraBluetooth.isConnected()){
 
-            this._serial.write(data);
+            return Promise.reject('Already connected over bluetooth.');
         }
+
+        //is USB is already connected, lets signal to
+        //the Aurora to start advertising aggressively
+        if (this.isUsbConnected()){
+
+            this.queueCmd('ble-reset', 'usb');
+        }
+
+        if (this._auroraBluetooth.isConnecting()){
+
+            return Promise.reject('Already connecting over bluetooth.');
+        }
+
+        return new Promise((resolve, reject) => {
+
+            this.once('bluetoothConnectionChange', (fwInfo) => {
+
+                if (!fwInfo) return reject();
+
+                resolve(fwInfo);
+
+            });
+
+            this._auroraBluetooth.connect(timeoutMs).catch(reject);
+
+        });
     }
-    
-    execCmd(cmd) {
 
-        if (cmd == undefined) {
-            return Promise.reject({'error': -1, 'message': 'Invalid command.'});
+    async disconnectBluetooth(){
+
+        this._autoConnectBluetooth = false;
+        
+        if (!this._auroraBluetooth.isConnected() && !this._auroraBluetooth.isConnecting()){
+
+            return;
         }
 
-        if (!(cmd instanceof AuroraCmd)) {
+        return this._auroraBluetooth.disconnect();
+    }
 
-            let cmdArgs = Array.prototype.slice.call(arguments);
-            let cmdName = cmdArgs.shift();
+    async attachMsd() {
 
-            cmd = new AuroraCmd(cmdName, cmdArgs);
+        if (!this.isConnected()){
+            return Promise.reject('Must have a connection first.');
         }
 
-        this._processingQueue.push(cmd);
+        if (this.isMsdAttached()) {
 
-        //if we aren't already processing
-        //the queue, kick things off
-        if (this.usbConnected && !this.cmdCurrent) {
-            this._processQueue();
+            return Promise.reject('MSD mode already attached.');
+        }
+        else if (this._msdAttaching) {
+
+            return Promise.reject('Already attaching MSD.');
         }
 
-        //return a promise that will be fulfilled
-        //when the command has finished executing
-        return cmd.queue().then( resp => {
+        this._msdAttaching = true;
 
-            this._processQueue();
+        try {
 
-            return resp;
-            
-        }).catch (error => {
+            await this.queueCmd('usb-mode 2');
+        }
+        catch (error) {
 
-            console.log(error);
+            this._msdAttaching = false;
 
-            this.cmdCurrent = null;
+            return Promise.reject('Failed enabling MSD mode: ' + error);
+        }
 
-            this._serial.flush(() => {
+        //sleep one second at a time, checking
+        //for a connection
+        for (let i = 0; i < MSD_CONNECT_DELAY_SEC; i++) {
 
-                AuroraResponseSerialParser.reset();
+            await sleep(1000);
 
-                if (this.usbConnected){
-                    this._processQueue();
+            //if we are connected we can return!!
+            if (this._msdDrive) return this._msdDrive;
+        }
+
+        this._msdAttaching = false;
+
+        return Promise.reject('Timeout waiting for Aurora MSD drive to mount.');
+    }
+
+    async detachMsd(retryCount = 5) {
+
+        if (!this._msdDrive) {
+
+            return;
+        }
+
+        //we do this just in case things are moving too fast...
+        await sleep(1500);
+
+        if (!this._msdDrive) {
+
+            return;
+        }
+
+        return promisify(ejectMedia.eject, ejectMedia)(this._msdDrive).then(() => {
+
+            //we go ahead and mark the drive as removed in case
+            //the event hasn't fired yet.
+            this._msdSetDetached();
+
+        }).catch(async () => {
+
+            if (retryCount) {
+
+                await sleep(MSD_DISCONNECT_RETRY_DELAY_MS);
+
+                if (!this._msdDrive) {
+
+                    this._msdSetDetached();
+
+                    return Promise.resolve();
                 }
 
+                return this.detachMsd(retryCount-1);
+            }
+
+            //check if drive is not actually present
+            //in case we missed the disconnect event somehow
+            return this._findMsdDrive().then(msdDrive => {
+
+                if (msdDrive) return Promise.reject('Failed disconnecting from MSD');
+
+                this._msdSetDetached();
+
+                return Promise.resolve();
+            })
+
+        });
+    }
+
+    async flash(fwFile, fwVersion = false, fwType = 'app') {
+
+        if (this._isFlashing) return Promise.reject('Already flashing.');
+
+        if (!this.isConnected()) return Promise.reject('Must be connected to perform flash.');
+
+        //remember whether auto connect was on before flash
+        //since we are going to secretly turn auto connect on now
+        const wasUsbAutoConnectOff = !this._autoConnectUsb;
+        const wasBluetoothAutoConnectOff = !this._autoConnectBluetooth;
+        const wasUsbConnected = this.isUsbConnected();
+        const wasBluetoothConnected = this.isBluetoothConnected();
+
+        if (this.isUsbConnected()){
+
+            this._autoConnectUsb = true;
+        }
+
+        if (this.isBluetoothConnected()){
+
+            this._autoConnectBluetooth = true;
+        }
+
+        let flashCmd = fwType == 'bootloader' || fwType == 'bootloader-and-bootstrap' ? 'os-flash-bootloader' : (fwType == 'ble' ? 'ble-flash' : 'os-flash');
+
+        if (this._info.version >= 20100) {
+            flashCmd += ` ${fwFile} /`;
+
+            if (fwType == 'bootloader-and-bootstrap') {
+
+                flashCmd += ' 1';
+            }
+        }
+
+        return this.queueCmd(flashCmd).then(() => {
+
+            this._isFlashing = true;
+
+            return new Promise((resolve, reject) => {
+
+                let onFlashConnectionChange;
+                let flashTimeout;
+
+                const finish = () => {
+
+                    if (wasUsbAutoConnectOff && this._autoConnectUsb){
+
+                        this._autoConnectUsb = false;
+                    }
+
+                    if (wasBluetoothAutoConnectOff && this._autoConnectBluetooth){
+
+                        this._autoConnectBluetooth = false;
+                    }
+
+                    this._isFlashing = false;
+
+                    clearTimeout(flashTimeout);
+
+                    this.removeListener('flashConnectionChange', onFlashConnectionChange);
+
+                    if (wasUsbConnected && !this.isUsbConnected()){
+
+                        this.emit('usbConnectionChange', false);
+                    }
+
+                    if (wasBluetoothConnected && !this.isBluetoothConnected()){
+
+                        setTimeout(() => {
+
+                            if (!this.isBluetoothConnected()) {
+
+                                this.emit('bluetoothConnectionChange', false);
+                            }
+
+                        }, 3000);
+                    }
+
+                };
+
+                onFlashConnectionChange = (fwInfo) => {
+
+                    if (fwInfo) {
+
+                        finish();
+
+                        const version = fwType == 'bootloader' || fwType == 'bootloader-and-bootstrap' ? fwInfo.bootloaderVersion : (fwType == 'ble' ? fwInfo.bleVersion : fwInfo.version);
+
+                        if (!fwVersion || version === fwVersion){
+
+                            resolve(fwInfo);
+                        }
+                        else {
+
+                            reject(`Flash failed. Expected ${type} version ${versionToString(fwVersion)} but have ${versionToString(version)}.`);
+                        }
+                    }
+                };
+
+                this.on('flashConnectionChange', onFlashConnectionChange);
+
+                flashTimeout = setTimeout(() => {
+
+                    finish();
+                    reject('Unable to verify flash. Timeout waiting for reconnection.');
+
+                }, 50000);
+
             });
 
-            return Promise.reject(error);
         });
 
     }
 
-    _onSerialDisconnect() {
+    async queueCmd(commandStr, connectorType = 'any', onCmdBegin = null, onCmdEnd = null) {
 
-        this.usbConnected = false;
+        if (!this._getConnector(connectorType).isConnected()){
 
-        if (this.cmdCurrent) {
-            this.cmdCurrent.triggerError(-1, "Lost connection to Aurora.");
-            this.cmdCurrent = null ;
+            return Promise.reject(`Not connected to Aurora over ${connectorType == 'any' ? 'usb or bluetooth' : connectorType}.`);
         }
 
-        this._serial.removeAllListeners();
-        this._processingQueue = [];
+        return new Promise((resolve, reject) => {
 
-        for (let i = 0; i < this._processingQueue.length; i++){
+            this._cmdQueue.push({
 
-            this._processingQueue.shift().triggerError(-1, "Lost connection to Aurora.");
-        }
-    }
+                commandStr,
+                connectorType,
+                onCmdBegin,
+                onCmdEnd,
+                resolve,
+                reject
 
-    _processQueue() {
-
-        this.cmdCurrent = this._processingQueue.shift();
-
-        if (!this.cmdCurrent) {
-            return;
-        }
-
-        this.cmdCurrent.exec();
-
-        console.log('Executing: ' + this.cmdCurrent.toString());
-    }
-
-
-    _processResponse(responseChunk) {
-
-        if (!responseChunk.length) {
-
-            return;
-        }
-
-        if (this.serialLogStream) this.serialLogStream.write(responseChunk);
-
-        if (this.cmdCurrent) {
-
-            this.cmdCurrent.petWatchdog();
-        }
-
-        AuroraResponseSerialParser.parseChunk(responseChunk);
-    }
-
-    _onPacketSuccess = (response) => {
-
-        this.cmdCurrent.respSuccessStreamFront.write(response);
-        this._responsePacketRetries = 0;
-        this.write(new Buffer([AuroraConstants.AURORA_PACKET_OK_BYTE]));
-    };
-
-    _onPacketError = (error) => {
-
-        this._responsePacketRetries++;
-
-        //if we have retried too many times, don't send the error byte
-        //which will cause the firmware side to timeout and end the response
-        if (this._responsePacketRetries > AuroraConstants.AURORA_PACKET_MAX_RETRIES) {
-
-            console.log('Reached max packet retry attempts.');
-            
-            this._responsePacketRetries = 0;
-
-            //TODO, trigger some kind of error so command knows it doesn't have the whole response
-            
-            return;
-        }
-
-        setTimeout(() => {
-
-            this._serial.flush(() => {
-
-                this.write(new Buffer([AuroraConstants.AURORA_PACKET_ERROR_BYTE]));
             });
 
-        }, 1000);
-    };
-    
-    _onResponseSuccess = (response) => {
-        
-        this.cmdCurrent.respSuccessStreamFront.write(response);
-    };
-    
-    _onResponseError = (response) => {
+            if (!this._cmdCurrent) {
 
-        this.cmdCurrent.respErrorStreamFront.write(response);
-    };
+                this._processCmdQueue();
+            }
 
-    _onCommandEnd = (error) => {
+        });
+    }
 
-        if (error) {
+    //this command is really only useful to reconcile differences between
+    //the old version of os-info and new ones
+    //TODO: remove once all in-field units are upgraded to firmware >= 2.1.0
+    async _getOsInfo(connectorType) {
 
-            this.cmdCurrent.respErrorStreamFront.end();
+        return this.queueCmd('os-info 1', connectorType).catch((cmdWithResponse) => {
+
+            //if the "too many arguments" error, then we'll reissue the command without params
+            if (cmdWithResponse.response.error === 3) {
+
+                return this.queueCmd('os-info', connectorType);
+            }
+
+            return Promise.reject(cmdWithResponse);
+
+        }).then((cmdWithResponse) => {
+
+           if (cmdWithResponse.response.error === 3) {
+
+               return this.queueCmd('os-info', connectorType);
+           }
+
+           return cmdWithResponse;
+
+        }).then((cmdWithResponse) => {
+
+            if (typeof cmdWithResponse.response.version == 'string') {
+
+                cmdWithResponse.response.version = stringToVersion(cmdWithResponse.response.version);
+            }
+
+            this._info = cmdWithResponse.response;
+
+            return cmdWithResponse;
+        });
+    }
+
+    _processCmdQueue() {
+
+        this._cmdCurrent = this._cmdQueue.shift();
+
+        if (!this._cmdCurrent) {
+            return;
         }
-        else {
-            this.cmdCurrent.respSuccessStreamFront.end();
+
+        this._cmdCurrent.connector = this._getConnector(this._cmdCurrent.connectorType);
+
+        if (!this._cmdCurrent.connector.isConnected()){
+
+            this._cmdCurrent.reject(`No longer connected to Aurora over ${this._cmdCurrent.connectorType == 'any' ? 'usb or bluetooth' : this._cmdCurrent.connectorType}.`);
+            return;
         }
-    };
-}
 
-const AuroraCommands = {
+        const [command, ...args] = this._cmdCurrent.commandStr.split(' ');
 
-    'copyFile'          : AuroraCmdCopyFile,
-    'readFile'          : AuroraCmdReadFile,
-    'deleteDir'         : AuroraCmdDeleteDir,
-    'deleteFile'        : AuroraCmdDeleteFile,
-    'downloadFile'      : AuroraCmdDownloadFile,
-    'flash'             : AuroraCmdFlash,
-    'getProfiles'       : AuroraCmdGetProfiles,
-    'osInfo'            : AuroraCmdOsInfo,
-    'readDir'           : AuroraCmdReadDir,
-    'sessionInfo'       : AuroraCmdSessionInfo,
-    'syncTime'          : AuroraCmdSyncTime,
-    'sdFormat'          : AuroraCmdSdFormat,
-    'writeFile'         : AuroraCmdWriteFile,
-    'unloadProfile'     : AuroraCmdUnloadProfile,
-    'enableEventOutput' : AuroraCmdEnableEventOutput,
-    'disableEventOutput': AuroraCmdDisableEventOutput,
-    'ledSet'            : AuroraCmdLedSet,
-    'ledBlink'          : AuroraCmdLedBlink,
-    'ledAlternate'      : AuroraCmdLedAlternate,
-    'ledTransition'     : AuroraCmdLedTransition
-};
+        this._cmdCurrent.inputStream = new Stream.Writable();
+        this._cmdCurrent.inputStream._write = (data, encoding, done) => {
+            this._cmdCurrent.connector.writeCmdInput(data).then(() => done());
+        };
 
+        this._cmdCurrent.outputStream = new Stream.Readable();
+        this._cmdCurrent.outputStream._read = () => {};
 
-//TODO: when ES7 decorators become stable convert into a real decorator
-let decorateWithCommands = function(auroraClass){
+        const cmd = {
+            command,
+            args,
+            connectorType: this._cmdCurrent.connectorType,
+            outputStream: this._cmdCurrent.outputStream,
+            beginTime: Date.now(),
+        };
 
-    for (let cmdName in AuroraCommands){
+        this.emit('cmdBegin', cmd);
 
-        auroraClass[cmdName] = function() {
+        if (this._cmdCurrent.onCmdBegin){
+            this._cmdCurrent.onCmdBegin(cmd);
+        }
 
-            let args = Array.from(arguments);
-            args.unshift(null);
+        this._cmdCurrent.connector.writeCmd(this._cmdCurrent.commandStr)
+            .then(cmdWithResponse => {
 
-            let cmdInstance = new (Function.prototype.bind.apply(AuroraCommands[cmdName], args));
+                cmd.endTime = Date.now();
+                cmd.origin = cmdWithResponse.origin;
+                cmd.error = cmdWithResponse.error;
+                cmd.response = cmdWithResponse.response;
 
-            return auroraClass.execCmd(cmdInstance);
+                return cmd;
+            })
+            .catch((error) => {
+
+                cmd.origin = this._cmdCurrent.connectorType == 'any' ? 'unknown' : this._cmdCurrent.connectorType;
+                cmd.error = true;
+                cmd.response = {error: -99, message: `Fatal error: ${error}`};
+                this._cmdQueue = [];
+
+                return cmd;
+
+            })
+            .then(async (cmd) => {
+
+                cmd.outputStream.push(null);
+
+                if (cmd.error){
+            
+                    this._cmdCurrent.reject(cmd);
+                }
+                else {
+                    this._cmdCurrent.resolve(cmd);
+                }
+
+                if (this._cmdCurrent.onCmdEnd){
+                    this._cmdCurrent.onCmdEnd(cmd);
+                }
+
+                this.emit('cmdEnd', cmd);
+
+                //todo this shouldn't be necessary!!
+                //figure out WTF is going on
+                setTimeout(() => {
+                    this._cmdCurrent = null;
+                    this._processCmdQueue();
+                }, 200);
+                
+            });
+    }
+
+    _getConnector(connector){
+
+        switch (connector){
+
+            case 'usb':
+                return this._auroraUsb;
+
+            case 'bluetooth':
+                return this._auroraBluetooth;
+
+            case 'any':
+            default:
+                return this._auroraUsb.isConnected() ? this._auroraUsb : this._auroraBluetooth;
         }
     }
-    
-    return auroraClass;
+
+    async _findMsdDrive(retryCount = 0, successOnFound = true) {
+
+        return promisify(DriveList.list, DriveList)().then(async drives => {
+
+            const drive = drives.find(drive => drive.description == AuroraConstants.MSD_DRIVE_NAME);
+
+            if (!drive || !drive.mountpoints.length || !drive.mountpoints[0].path) {
+
+                if (!retryCount || !successOnFound) {
+
+                    return false;
+                }
+            }
+            else if (successOnFound) {
+
+                return drive.mountpoints[0].path;
+            }
+
+            await sleep(MSD_SCAN_RETRY_DELAY_MS);
+
+            return this._findMsdDrive(retryCount-1, successOnFound);
+
+        });
+    }
+
+    _watchUsb = () => {
+
+        this._unwatchUsb();
+
+        usbDetect.on(`add:${parseInt(AuroraConstants.AURORA_USB_VID)}`, this._onAuroraUsbAttached);
+        usbDetect.on(`remove:${parseInt(AuroraConstants.AURORA_USB_VID)}`, this._onAuroraUsbDetached);
+    };
+
+    _unwatchUsb = () => {
+
+        usbDetect.removeListener(`add:${parseInt(AuroraConstants.AURORA_USB_VID)}`, this._onAuroraUsbAttached);
+        usbDetect.removeListener(`remove:${parseInt(AuroraConstants.AURORA_USB_VID)}`, this._onAuroraUsbDetached);
+    };
+
+    _onAuroraUsbAttached = async (device) => {
+
+        if (device.productId === parseInt(AuroraConstants.AURORA_USB_MSD_PID)) {
+
+            this._findMsdDrive(5).then(this._msdSetAttached, true);
+        }
+        else if (device.productId  === parseInt(AuroraConstants.AURORA_USB_SERIAL_PID) && this._autoConnectUsb) {
+
+            this.autoConnectUsb();
+        }
+    };
+
+    _onAuroraUsbDetached = (device) => {
+
+        if (device.productId === parseInt(AuroraConstants.AURORA_USB_MSD_PID)) {
+
+            this._findMsdDrive(5).then(this._msdSetDetached, false);
+        }
+
+    };
+
+    _msdSetAttached = (msdDrive) => {
+
+        if (!this._msdDrive && msdDrive) {
+
+            this._msdAttaching = false;
+            this._msdDrive = msdDrive;
+
+            this.emit('msdAttachmentChange', msdDrive);
+        }
+    };
+
+    _msdSetDetached = (msdDrive) => {
+
+        if (this._msdDrive && !msdDrive) {
+
+            this._msdDrive = false;
+
+            this.emit('msdAttachmentChange', false);
+        }
+    };
+
+    _onUsbConnectionStateChange = (connectionState, previousConnectionState) => {
+
+        if (connectionState == AuroraUsb.ConnectionStates.CONNECTED_IDLE &&
+            previousConnectionState == AuroraUsb.ConnectionStates.CONNECTING){
+
+            this._getOsInfo('usb').then((cmd) => {
+
+                this.emit(this._isFlashing ? 'flashConnectionChange' : 'usbConnectionChange', cmd.response);
+
+            }).catch((error) => {
+
+                this.disconnectUsb();
+            });
+
+        }
+        else if (connectionState == AuroraUsb.ConnectionStates.DISCONNECTED &&
+            previousConnectionState != AuroraUsb.ConnectionStates.CONNECTING){
+
+            this.emit(this._isFlashing ? 'flashConnectionChange' : 'usbConnectionChange', false);
+        }
+
+    };
+
+    _onBluetoothConnectionStateChange = (connectionState, previousConnectionState) => {
+
+        if (connectionState == AuroraBluetooth.ConnectionStates.CONNECTED_IDLE &&
+            previousConnectionState == AuroraBluetooth.ConnectionStates.CONNECTING){
+
+            this._getOsInfo('bluetooth').then((cmd) => {
+
+                this.emit(this._isFlashing ? 'flashConnectionChange' : 'bluetoothConnectionChange', cmd.response);
+
+            }).catch((error) => {
+
+                this.disconnectBluetooth();
+            });
+
+        }
+        else if (connectionState == AuroraBluetooth.ConnectionStates.DISCONNECTED &&
+            previousConnectionState != AuroraBluetooth.ConnectionStates.CONNECTING){
+
+            this.emit(this._isFlashing ? 'flashConnectionChange' : 'bluetoothConnectionChange', false);
+
+            if (this._autoConnectBluetooth){
+
+                this._auroraBluetooth.connect(0).catch(() => {});
+            }
+
+        }
+    };
+
+    _onCmdInputRequested = () => {
+
+        if (!this._cmdCurrent) return;
+
+        this.emit('cmdInputRequested', this._cmdCurrent.inputStream);
+    };
+
+    _onCmdOutputReady = (output) => {
+
+        if (!this._cmdCurrent) return;
+
+        this._cmdCurrent.outputStream.push(output);
+    };
+
+    _onAuroraLog = (log) => {
+
+        this.emit('log', log);
+    };
+
+    _onAuroraStreamData = (streamData) => {
+
+        this.emit('streamData', streamData);
+    };
+
+    _onAuroraEvent = (auroraEvent) => {
+
+        this.emit('auroraEvent', auroraEvent);
+    };
+
+    _onAuroraError = (error) => {
+
+        this.emit('auroraError', error);
+    };
+
 }
 
-export default decorateWithCommands(new Aurora());
-
-const AuroraEvents = AuroraConstants.Events;
-const AuroraEventOutputs = AuroraConstants.EventOutputs;
-const AuroraLogTypes = AuroraConstants.LogTypes;
-const AuroraStreams = AuroraConstants.Streams;
-const AuroraStreamOutputs = AuroraConstants.StreamOutputs;
+const AuroraEventIds = AuroraConstants.EventIds;
+const AuroraEventOutputIds = AuroraConstants.EventOutputsIds;
+const AuroraLogTypeIds = AuroraConstants.LogTypeIds;
+const AuroraStreamIds = AuroraConstants.StreamIds;
+const AuroraStreamOutputIds = AuroraConstants.StreamOutputIds;
 const AuroraSleepStages = AuroraConstants.SleepStages;
 
 export {
-    Aurora, AuroraCmd, AuroraCmdCopyFile, AuroraCmdReadDir, AuroraCmdReadFile,
-    AuroraCmdDeleteDir, AuroraCmdDeleteFile, AuroraCmdDownloadFile,
-    AuroraCmdFlash, AuroraCmdGetProfiles, AuroraCmdOsInfo, AuroraCmdSdFormat,
-    AuroraCmdSessionInfo, AuroraCmdSyncTime, AuroraCmdWriteFile, AuroraCmdUnloadProfile,
-    AuroraCmdEnableEventOutput, AuroraCmdDisableEventOutput, AuroraCmdLedSet,
-    AuroraCmdLedBlink, AuroraCmdLedAlternate, AuroraCmdLedTransition,
-    AuroraEvents, AuroraEventOutputs, AuroraLogTypes, AuroraStreams, AuroraStreamOutputs,
-    AuroraSleepStages
+    Aurora, AuroraConstants, AuroraEventIds, AuroraEventOutputIds, AuroraLogTypeIds, AuroraStreamIds,
+    AuroraStreamOutputIds, AuroraSleepStages
 };
 
-export AuroraCmdTransformBinary from './AuroraCmdTransformBinary';
-export AuroraCmdTransformLines from './AuroraCmdTransformLines';
-export AuroraCmdTransformObject from './AuroraCmdTransformObject';
+Object.defineProperty(Aurora.prototype, 'syncTime', {value: require('./AuroraCmdSyncTime')});
+Object.defineProperty(Aurora.prototype, 'readFile', {value: require('./AuroraCmdReadFile')});
+Object.defineProperty(Aurora.prototype, 'writeFile', {value: require('./AuroraCmdWriteFile')});
+Object.defineProperty(Aurora.prototype, 'downloadFile', {value: require('./AuroraCmdDownloadFile')});
+Object.defineProperty(Aurora.prototype, 'uploadFile', {value: require('./AuroraCmdUploadFile')});
+Object.defineProperty(Aurora.prototype, 'flashFile', {value: require('./AuroraCmdFlashFile')});
+Object.defineProperty(Aurora.prototype, 'getProfiles', {value: require('./AuroraCmdGetProfiles')});
+Object.defineProperty(Aurora.prototype, 'setProfiles', {value: require('./AuroraCmdSetProfiles')});
+Object.defineProperty(Aurora.prototype, 'getSessions', {value: require('./AuroraCmdGetSessions')});
+Object.defineProperty(Aurora.prototype, 'downloadStream', {value: require('./AuroraCmdDownloadStream')});
+Object.defineProperty(Aurora.prototype, 'playBuzzSong', {value: require('./AuroraCmdPlayBuzzSong')});
+Object.defineProperty(Aurora.prototype, 'playLedEffect', {value: require('./AuroraCmdPlayLedEffect')});
+
+export default new Aurora();
 
 
